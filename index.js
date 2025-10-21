@@ -18,8 +18,9 @@ console.error("=== Modules imported successfully ===");
 
 dotenv.config();
 
-// URL del backend (puedes cambiar esta variable directamente para configurar el backend)
-const BACKEND_URL = "http://localhost:3000/api";
+// URL del backend (lee desde variable de entorno o usa valor por defecto)
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000/api";
+console.error("Backend URL:", BACKEND_URL);
 
 // Crear servidor MCP
 const server = new Server(
