@@ -157,15 +157,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Exportar una función para inicializar el servidor MCP
 export async function startServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Dossin MCP Server running on stdio");
+  try {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error("Dossin MCP Server running on stdio");
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
 }
+
+// Capturar errores no manejados
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+  process.exit(1);
+});
 
 // Si el archivo se ejecuta directamente, iniciar el servidor
 if (import.meta.url === `file://${process.argv[1]}`) {
   startServer().catch((error) => {
     console.error("Server error:", error);
+    console.error("Error stack:", error.stack);
     process.exit(1);
   });
 }
