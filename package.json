@@ -1,12 +1,10 @@
 {
-  "name": "@moradelboca/dossin-mcp-server",
+  "name": "dossin-mcp-server",
   "version": "1.0.0",
   "description": "MCP Server para acceso a base de datos Dossin via API REST",
   "type": "module",
   "main": "index.js",
-  "bin": {
-    "dossin-mcp": "./index.js"
-  },
+  "bin": "./index.js",
   "private": false,
   "scripts": {
     "start": "node index.js",
