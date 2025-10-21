@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+// Log inmediato para verificar que el script se está ejecutando
+console.error("=== Dossin MCP Server Starting ===");
+console.error("Node version:", process.version);
+console.error("Working directory:", process.cwd());
+console.error("Script path:", import.meta.url);
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -7,6 +13,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
+
+console.error("=== Modules imported successfully ===");
 
 dotenv.config();
 
