@@ -75,28 +75,92 @@ Ejecuta la siguiente query: SELECT * FROM camiones LIMIT 10
 
 ## Ejemplo de flujo de trabajo con Claude
 
-1. **Primero, obtener el schema**:
+### Consultas naturales que Claude puede interpretar:
+
+**Turnos:**
+```
+Usuario: ¿Hay turnos mañana?
+Usuario: ¿Cuántos turnos tengo hoy?
+Usuario: Muéstrame los turnos pendientes de esta semana
+Usuario: ¿Qué turnos tiene el camión ABC123?
+```
+
+**Camiones:**
+```
+Usuario: ¿Qué camiones están disponibles?
+Usuario: Muestra los datos del camión con matrícula XYZ789
+Usuario: ¿Cuántos camiones tenemos registrados?
+```
+
+**Cargas:**
+```
+Usuario: ¿Qué cargas están en proceso?
+Usuario: Muestra las cargas de maíz del último mes
+Usuario: ¿Cuántas toneladas se cargaron hoy?
+```
+
+**Choferes:**
+```
+Usuario: Lista todos los choferes activos
+Usuario: ¿Qué chofer maneja el camión ABC123?
+```
+
+### Flujo técnico (lo que hace Claude internamente):
+
+1. **Primero, obtener el schema** (si no lo tiene):
    ```
-   Usuario: ¿Qué tablas hay en la base de datos?
-   Claude: [Usa get_database_schema y muestra las tablas]
+   Claude: [Usa get_database_schema internamente]
    ```
 
-2. **Luego, ejecutar consultas**:
+2. **Interpretar la pregunta y construir query**:
    ```
-   Usuario: Muestra los camiones con matrícula ABC
-   Claude: [Usa execute_query con SELECT * FROM camiones WHERE matricula LIKE '%ABC%']
+   Usuario: ¿Hay turnos mañana?
+   Claude: [Construye: SELECT * FROM turnos WHERE fecha = '2025-10-22']
+   Claude: [Usa execute_query]
+   ```
+
+3. **Presentar resultados de forma natural**:
+   ```
+   Claude: "Sí, hay 5 turnos programados para mañana:
+   
+   | Hora  | Camión  | Producto | Destino |
+   |-------|---------|----------|---------|
+   | 08:00 | ABC123  | Maíz     | Puerto  |
+   | ..."
    ```
 
 ## Configuración para instrucciones del LLM
 
-Para que Claude no explique todos los pasos detalladamente y solo dé la información pedida, puedes agregar en tus instrucciones personalizadas de Claude:
+Para que Claude entienda mejor el contexto de Dossin y responda de manera más natural, agrega estas instrucciones personalizadas en la configuración de Claude Desktop:
 
 ```
-Cuando uses el servidor MCP de Dossin:
-- Primero usa get_database_schema para entender la estructura
-- Luego usa execute_query para obtener datos
-- NO expliques los pasos técnicos, solo muestra los resultados de manera clara
-- Presenta los datos en formato de tabla cuando sea apropiado
+Estás conectado al sistema Dossin, un sistema de gestión de cargas y agro.
+
+Contexto del negocio:
+- Dossin gestiona turnos de carga/descarga de productos agrícolas
+- Administra camiones, choferes, cargas, clientes y destinos
+- La base de datos contiene información operativa del día a día
+
+Cuando el usuario hable de:
+- "turnos" o "turnos de mañana/hoy" → Consulta la tabla de turnos con fechas
+- "camiones" → Busca en vehículos/camiones registrados
+- "cargas" → Operaciones de carga activas o históricas
+- "choferes/conductores" → Personal de conducción
+- "productos" → Productos agrícolas (cereales, oleaginosas)
+- "clientes" → Empresas o productores que usan el servicio
+
+Comportamiento esperado:
+1. Usa get_database_schema PRIMERO para entender la estructura
+2. Construye queries SQL apropiadas basadas en el schema
+3. NO expliques los pasos técnicos en detalle, solo responde directamente
+4. Presenta datos en tablas cuando sea apropiado
+5. Interpreta preguntas naturales y tradúcelas a consultas SQL relevantes
+
+Ejemplo:
+Usuario: "¿Hay turnos mañana?"
+→ Obtén schema si no lo tienes
+→ Ejecuta: SELECT * FROM turnos WHERE fecha = '2025-10-22'
+→ Responde: "Sí, hay X turnos programados para mañana: [lista]"
 ```
 
 ## Desarrollo
