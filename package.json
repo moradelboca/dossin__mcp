@@ -1,0 +1,30 @@
+{
+  "name": "@moradelboca/dossin-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server para acceso a base de datos Dossin via API REST",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "dossin-mcp": "./index.js"
+  },
+  "private": false,
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "database",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "dotenv": "^16.4.5"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
