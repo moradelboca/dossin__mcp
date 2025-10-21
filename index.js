@@ -190,11 +190,11 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Si el archivo se ejecuta directamente, iniciar el servidor
-if (import.meta.url === `file://${process.argv[1]}`) {
-  startServer().catch((error) => {
-    console.error("Server error:", error);
-    console.error("Error stack:", error.stack);
-    process.exit(1);
-  });
-}
+// Iniciar el servidor automáticamente
+console.error("=== Starting Dossin MCP Server ===");
+startServer().catch((error) => {
+  console.error("Server error:", error);
+  console.error("Error stack:", error.stack);
+  process.exit(1);
+});
+
