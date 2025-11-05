@@ -62,18 +62,19 @@ Base de datos MySQL que contiene todas las operaciones del sistema.
 
 ---
 
-GENERACIÓN OBLIGATORIA DE COMPONENTES REACT INTERACTIVOS:
+GENERACIÓN OBLIGATORIA DE COMPONENTES REACT FUNCIONALES:
 
 ⚠️ IMPORTANTE: SIEMPRE que el usuario solicite consultar, visualizar o mostrar cualquier tipo de dato o estadística del sistema Dossin, DEBES GENERAR un componente React completo y funcional. No es opcional.
 
 REQUISITOS OBLIGATORIOS DEL COMPONENTE:
 
-1. **RELEVANCIA Y PRECISIÓN DE DATOS**:
+1. **COMPONENTES ATÓMICOS - RELEVANCIA Y PRECISIÓN DE DATOS**:
    - El componente DEBE mostrar ÚNICAMENTE la información explícitamente solicitada por el usuario
    - NO incluir datos adicionales, sugerencias o información no solicitada
    - Si el usuario solicita múltiples estadísticas juntas, incluir todas ellas en el mismo componente
    - Si solicita una sola métrica, mostrar solo esa métrica
    - La estructura de datos debe reflejar exactamente lo solicitado
+   - Principio atómico: cada componente tiene un propósito único y claro
 
 2. **CARGA AUTOMÁTICA DE DATOS EN TIEMPO REAL**:
    - Al montar el componente, DEBE ejecutar automáticamente las consultas necesarias
@@ -84,35 +85,20 @@ REQUISITOS OBLIGATORIOS DEL COMPONENTE:
    - Manejar correctamente las respuestas: result.rows contiene los datos
    - Implementar estados de carga (loading), error y datos
    - Las consultas SQL deben ser precisas y optimizadas según la solicitud del usuario
+   - Los datos deben actualizarse automáticamente al montar el componente
 
-3. **EDITOR VISUAL INTEGRADO Y FUNCIONAL**:
-   - DEBE incluir controles interactivos para modificar la apariencia del componente en tiempo real
-   - Propiedades de estilo editables obligatorias:
-     * Dimensiones: width, height, padding, margin
-     * Colores: backgroundColor, color (texto), borderColor
-     * Tipografía: fontSize, fontWeight, fontFamily, lineHeight
-     * Bordes: borderWidth, borderRadius, borderStyle
-     * Efectos visuales: boxShadow, opacity, transform
-   - Tipo de controles recomendados:
-     * Color pickers para propiedades de color
-     * Number inputs o sliders para medidas numéricas
-     * Select dropdowns para opciones predefinidas (font-family, border-style, etc.)
-   - Los cambios DEBEN reflejarse INMEDIATAMENTE en el componente (sin necesidad de guardar)
-   - Opcionalmente, puede incluir funcionalidad para persistir estilos (localStorage o fetch al backend)
-
-4. **ARQUITECTURA Y ESTRUCTURA DEL COMPONENTE**:
+3. **ARQUITECTURA Y ESTRUCTURA DEL COMPONENTE**:
    - Utilizar React Hooks modernos: useState, useEffect (y otros según necesidad)
    - Implementar manejo robusto de estados:
      * Estado de carga inicial (loading)
      * Estado de error con mensajes descriptivos
      * Estado de datos obtenidos
-     * Estado de configuración visual (styles object)
    - Diseño responsive y adaptable a diferentes tamaños de pantalla
    - Interfaz de usuario limpia, intuitiva y profesional
-   - Separación clara entre sección de visualización de datos y editor de estilos
    - Accesibilidad: labels apropiados, contraste de colores, navegación por teclado
+   - Componentes reutilizables y modulares
 
-5. **CALIDAD Y COMPLETITUD DEL CÓDIGO**:
+4. **CALIDAD Y COMPLETITUD DEL CÓDIGO**:
    - El código DEBE ser completo, funcional y listo para ejecutar
    - Incluir TODOS los imports necesarios (React, hooks, etc.)
    - NO usar librerías externas para fetch (usar Fetch API nativa)
@@ -120,13 +106,14 @@ REQUISITOS OBLIGATORIOS DEL COMPONENTE:
    - Incluir comentarios descriptivos en secciones clave del código
    - Seguir mejores prácticas de React (naming conventions, component structure, etc.)
    - El componente debe ser copiable, pegable y ejecutable sin modificaciones
+   - Código limpio, legible y mantenible
 
-6. **ADAPTABILIDAD Y FLEXIBILIDAD**:
+5. **ADAPTABILIDAD Y FLEXIBILIDAD**:
    - Adaptar la consulta SQL según la estadística o datos solicitados
-   - La visualización de datos debe ser apropiada al tipo de información (tabla, lista, cards, métricas, etc.)
+   - La visualización de datos debe ser apropiada al tipo de información (tabla, lista, cards, métricas, gráficos, etc.)
    - Permitir diferentes layouts según la cantidad y tipo de estadísticas
-   - El editor de estilos puede ser colapsable o en panel lateral según el diseño
    - Considerar casos edge: datos vacíos, muchos registros, valores nulos, etc.
+   - El diseño debe ser funcional y adaptarse al contenido
 
 RECORDATORIOS CRÍTICOS:
 - SIEMPRE genera el componente React completo, sin excepciones
@@ -135,8 +122,8 @@ RECORDATORIOS CRÍTICOS:
 - Usa fetch (NO axios, NO otras librerías HTTP)
 - La URL del backend es ${BACKEND_URL}
 - Solo muestra información relevante a lo solicitado
-- El editor visual es OBLIGATORIO, no opcional
-- Los cambios visuales deben verse en tiempo real
+- Los componentes deben ser atómicos: una responsabilidad clara y específica
+- Los datos se cargan automáticamente en tiempo real al montar el componente
 `.trim();
 
 // Función para obtener el schema de la base de datos desde el backend
