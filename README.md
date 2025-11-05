@@ -129,6 +129,120 @@ Usuario: ¿Qué chofer maneja el camión ABC123?
    | ..."
    ```
 
+## Generación de Componentes React Interactivos
+
+El servidor MCP de Dossin incluye contexto para que Claude pueda generar componentes React interactivos para visualizar estadísticas. Estos componentes tienen las siguientes características:
+
+### Características de los Componentes Generados:
+
+1. **Componentes Atómicos y Relevantes**:
+   - Solo muestran las estadísticas explícitamente solicitadas
+   - No incluyen información adicional no solicitada
+   - Pueden mostrar múltiples estadísticas si se solicitan juntas
+
+2. **Carga de Datos en Tiempo Real**:
+   - Los datos se cargan automáticamente al montar el componente
+   - Usa `fetch` para consultar el backend de Dossin
+   - Incluye manejo de estados de carga y errores
+
+3. **Editor Visual Integrado**:
+   - Controles para modificar estilos en tiempo real:
+     * Colores (fondo, texto, bordes)
+     * Tamaños (padding, margin, fuente)
+     * Bordes (radio, grosor)
+     * Sombras
+   - Los cambios se reflejan inmediatamente
+   - Opcional: guardar configuración visual en el backend
+
+### Ejemplos de Uso:
+
+```
+Usuario: "Muéstrame los turnos de hoy en un componente React interactivo"
+Claude: [Genera componente React con fetch, editor de estilos, y datos de turnos]
+
+Usuario: "Necesito un dashboard con total de camiones y cargas activas"
+Claude: [Genera componente con ambas estadísticas y editor visual]
+
+Usuario: "Crea un widget para visualizar productos más cargados"
+Claude: [Genera componente con query específico y estilos editables]
+```
+
+### Estructura del Componente:
+
+Los componentes generados por Claude siguen esta estructura:
+
+```jsx
+import React, { useState, useEffect } from 'react';
+
+function ComponenteDossin() {
+  // Estados para datos y estilos
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [styles, setStyles] = useState({
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    padding: '20px',
+    fontSize: '16px',
+    borderRadius: '8px'
+  });
+
+  // Carga de datos al montar
+  useEffect(() => {
+    fetch('http://localhost:3000/api/database/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        sql: 'SELECT ... FROM ...',
+        params: []
+      })
+    })
+    .then(res => res.json())
+    .then(result => {
+      setData(result.rows);
+      setLoading(false);
+    })
+    .catch(err => {
+      setError(err.message);
+      setLoading(false);
+    });
+  }, []);
+
+  // Función para actualizar estilos
+  const updateStyle = (property, value) => {
+    setStyles(prev => ({ ...prev, [property]: value }));
+  };
+
+  // Renderizado con estados de carga/error
+  if (loading) return <div>Cargando...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      {/* Visualización de datos con estilos dinámicos */}
+      <div style={styles}>
+        {/* Contenido específico de la estadística */}
+      </div>
+      
+      {/* Editor de estilos */}
+      <div className="style-editor">
+        <h3>Editor de Estilos</h3>
+        {/* Controles de color, tamaño, etc. */}
+      </div>
+    </div>
+  );
+}
+
+export default ComponenteDossin;
+```
+
+### Requisitos:
+
+- **React**: Los componentes usan Hooks (useState, useEffect)
+- **Fetch API**: No requiere librerías adicionales
+- **Backend activo**: El backend de Dossin debe estar corriendo
+- **CORS configurado**: El backend debe permitir peticiones desde el frontend
+
 ## Configuración para instrucciones del LLM
 
 Para que Claude entienda mejor el contexto de Dossin y responda de manera más natural, agrega estas instrucciones personalizadas en la configuración de Claude Desktop:
@@ -155,12 +269,21 @@ Comportamiento esperado:
 3. NO expliques los pasos técnicos en detalle, solo responde directamente
 4. Presenta datos en tablas cuando sea apropiado
 5. Interpreta preguntas naturales y tradúcelas a consultas SQL relevantes
+6. CUANDO SE SOLICITEN COMPONENTES REACT: Genera código completo, funcional, con fetch y editor de estilos
 
-Ejemplo:
+Ejemplo de consulta simple:
 Usuario: "¿Hay turnos mañana?"
 → Obtén schema si no lo tienes
 → Ejecuta: SELECT * FROM turnos WHERE fecha = '2025-10-22'
 → Responde: "Sí, hay X turnos programados para mañana: [lista]"
+
+Ejemplo de componente React:
+Usuario: "Muéstrame los turnos de hoy en un componente React"
+→ Genera componente completo con:
+  - useEffect para fetch de datos
+  - Editor de estilos (colores, tamaños, etc.)
+  - Manejo de estados de carga/error
+  - Solo información solicitada (turnos de hoy)
 ```
 
 ## Desarrollo
@@ -219,6 +342,106 @@ Verifica que:
 
 - Asegúrate de que todas las dependencias estén instaladas (`npm install`)
 - Verifica que Node.js esté en la versión correcta (v18 o superior recomendado)
+
+## Ejemplos Prácticos de Componentes React
+
+### Ejemplo 1: Componente Simple - Total de Turnos
+
+**Solicitud del usuario:**
+```
+"Crea un componente React que muestre el total de turnos de hoy"
+```
+
+**Claude generará:**
+- Componente que hace fetch a `/api/database/query` con SQL: `SELECT COUNT(*) as total FROM turnos WHERE fecha = CURDATE()`
+- Editor con controles para: backgroundColor, color, fontSize, padding, borderRadius
+- Visualización del número con estilos aplicables en tiempo real
+
+### Ejemplo 2: Componente con Múltiples Estadísticas
+
+**Solicitud del usuario:**
+```
+"Dame un dashboard con total de camiones, cargas activas y turnos pendientes"
+```
+
+**Claude generará:**
+- Componente con 3 fetch diferentes (o un fetch con JOIN)
+- Una card para cada estadística solicitada
+- Editor de estilos que afecta a todo el dashboard o cards individuales
+- Solo muestra esas 3 estadísticas (nada más)
+
+### Ejemplo 3: Componente con Lista
+
+**Solicitud del usuario:**
+```
+"Muéstrame los 5 productos más cargados este mes en un componente visual"
+```
+
+**Claude generará:**
+- Query con GROUP BY y ORDER BY LIMIT 5
+- Lista/tabla ordenada con los productos
+- Editor para personalizar colores, tamaños de fuente, espaciado
+- Gráfico o visualización si es apropiado
+
+### Ejemplo 4: Componente con Filtros
+
+**Solicitud del usuario:**
+```
+"Necesito ver turnos por fecha con selector de fecha"
+```
+
+**Claude generará:**
+- Input de fecha que actualiza el estado
+- useEffect que re-fetch cuando cambia la fecha
+- Editor de estilos visual
+- Lista de turnos filtrados por fecha seleccionada
+
+## Integración con Proyectos React
+
+Para usar los componentes generados en tu proyecto React:
+
+1. **Copia el código** generado por Claude
+2. **Instala dependencias** (si no las tienes):
+   ```bash
+   npm install react
+   ```
+3. **Ajusta la URL del backend** si es necesario (variable de entorno recomendada)
+4. **Configura CORS** en el backend de Dossin para aceptar peticiones desde tu frontend
+5. **Importa y usa** el componente en tu app
+
+Ejemplo de uso:
+```jsx
+import EstadisticaTurnos from './components/EstadisticaTurnos';
+
+function App() {
+  return (
+    <div className="App">
+      <h1>Dashboard Dossin</h1>
+      <EstadisticaTurnos />
+    </div>
+  );
+}
+```
+
+## Personalización Avanzada
+
+Los componentes generados son puntos de partida. Puedes extenderlos:
+
+- **Agregar más controles de estilo**: shadows, transforms, animations
+- **Guardar configuración**: Persistir estilos en localStorage o backend
+- **Añadir gráficos**: Integrar Chart.js, Recharts, etc.
+- **Exportar estilos**: Generar CSS/Tailwind classes desde la configuración
+- **Temas**: Crear presets de estilos (oscuro, claro, corporativo)
+
+## Notas de Seguridad
+
+⚠️ **Importante**: Los componentes generados hacen peticiones al backend sin autenticación por defecto. Para producción:
+
+1. **Implementa autenticación** (JWT, OAuth, etc.)
+2. **Valida permisos** en el backend
+3. **Sanitiza queries SQL** (el backend ya debe hacer esto)
+4. **Usa HTTPS** en producción
+5. **Configura CORS** apropiadamente (no usar wildcard `*` en producción)
 
 ## Licencia
 
