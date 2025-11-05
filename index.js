@@ -19,7 +19,7 @@ console.error("=== Modules imported successfully ===");
 dotenv.config();
 
 // URL del backend (lee desde variable de entorno o usa valor por defecto)
-const BACKEND_URL = "https://api.dossin.com.ar/api";
+const BACKEND_URL = "https://dev.dossin.com.ar/api";
 console.error("Backend URL:", BACKEND_URL);
 
 // Crear servidor MCP
