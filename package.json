@@ -1,7 +1,7 @@
 {
   "name": "dossin-mcp-server",
-  "version": "1.0.0",
-  "description": "MCP Server para acceso a base de datos Dossin via API REST",
+  "version": "1.1.0",
+  "description": "MCP Server para acceso a base de datos Dossin via API REST con compilación de componentes React",
   "type": "module",
   "main": "index.js",
   "bin": "./index.js",
@@ -14,12 +14,15 @@
     "mcp",
     "model-context-protocol",
     "database",
-    "api"
+    "api",
+    "react",
+    "compiler"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.25.12"
   }
 }

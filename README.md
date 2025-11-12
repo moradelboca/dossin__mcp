@@ -73,6 +73,49 @@ Ejecuta la siguiente query: SELECT * FROM camiones LIMIT 10
 
 **Respuesta**: JSON con columnas, filas y conteo.
 
+### 3. compile_and_save_component ⭐ NUEVO
+
+Compila componentes React a archivos HTML standalone y los guarda en `~/Downloads/dossin-components/`.
+
+**Uso en Claude**:
+```
+Usuario: "Compila este componente React y guárdalo"
+Usuario: "Guarda el componente VolumenCargaProvincias"
+Usuario: "Exporta este componente a HTML"
+```
+
+**Funcionalidad**:
+- Compila JSX a JavaScript usando esbuild
+- Genera archivo HTML standalone con React incluido desde CDN
+- Guarda en `~/Downloads/dossin-components/`
+- Retorna: ruta del archivo, tamaño, hash MD5
+- Listo para servir directamente desde el backend (sin compilación adicional)
+
+**Ejemplo de respuesta**:
+```json
+{
+  "success": true,
+  "localPath": "/Users/usuario/Downloads/dossin-components/VolumenCargaProvincias-2025-11-07-143022.html",
+  "fileName": "VolumenCargaProvincias-2025-11-07-143022.html",
+  "fileSize": 12456,
+  "hash": "a1b2c3d4e5f6...",
+  "timestamp": "2025-11-07T14:30:22.123Z",
+  "message": "Componente compilado y guardado exitosamente..."
+}
+```
+
+**Ventajas**:
+- ✅ Archivos listos para producción
+- ✅ No requiere compilación en el backend (optimiza recursos)
+- ✅ HTML standalone: funciona en cualquier servidor
+- ✅ React desde CDN: mejor performance y caché
+- ✅ Fácil de compartir y deployar
+
+**Fase 2 (Próximamente)**:
+- Parámetro `uploadToBackend: true` para subir automáticamente al backend
+- Endpoint: `POST /api/components/upload`
+- Retorna URL pública del componente
+
 ## Ejemplo de flujo de trabajo con Claude
 
 ### Consultas naturales que Claude puede interpretar:
@@ -129,9 +172,43 @@ Usuario: ¿Qué chofer maneja el camión ABC123?
    | ..."
    ```
 
+## Generación y Compilación de Componentes React
+
+El servidor MCP de Dossin permite un flujo completo desde la generación hasta la compilación de componentes React:
+
+### Flujo Completo:
+
+1. **Generación**: Claude genera el componente React basado en tu solicitud
+2. **Compilación**: Claude compila automáticamente el componente a HTML
+3. **Guardado**: El archivo se guarda en `~/Downloads/dossin-components/`
+4. **Deployment**: Puedes servir el archivo directamente desde tu backend
+
+### Ejemplo de Uso Completo:
+
+```
+Usuario: "Crea un componente con el volumen de carga por provincia de los últimos 6 meses"
+
+Claude: 
+1. [Genera componente React completo]
+2. [Muestra el código al usuario]
+3. "¿Quieres que compile y guarde este componente?"
+
+Usuario: "Sí, compílalo"
+
+Claude:
+[Usa compile_and_save_component]
+"✅ Componente compilado y guardado en:
+/Users/usuario/Downloads/dossin-components/VolumenCargaProvincias-2025-11-07-143022.html
+
+Puedes:
+- Abrirlo directamente en el navegador
+- Servirlo desde tu backend en /public/components/
+- Compartirlo como archivo standalone"
+```
+
 ## Generación de Componentes React Interactivos
 
-El servidor MCP de Dossin incluye contexto para que Claude pueda generar componentes React interactivos para visualizar estadísticas. Estos componentes tienen las siguientes características:
+Los componentes generados tienen las siguientes características:
 
 ### Características de los Componentes Generados:
 

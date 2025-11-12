@@ -13,6 +13,11 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
+import * as esbuild from "esbuild";
+import { promises as fs } from "fs";
+import path from "path";
+import { createHash } from "crypto";
+import os from "os";
 
 console.error("=== Modules imported successfully ===");
 
@@ -163,6 +168,191 @@ async function executeQuery(query, params = []) {
   return await response.json();
 }
 
+// Función para compilar componente React usando esbuild
+async function compileReactComponent(componentCode) {
+  try {
+    // Transformar JSX a JavaScript usando esbuild
+    const result = await esbuild.transform(componentCode, {
+      loader: 'jsx',
+      jsx: 'transform',
+      jsxFactory: 'React.createElement',
+      jsxFragment: 'React.Fragment',
+      target: 'es2020',
+      format: 'iife',
+      globalName: 'ComponentModule'
+    });
+
+    return result.code;
+  } catch (error) {
+    throw new Error(`Error al compilar componente: ${error.message}`);
+  }
+}
+
+// Función para crear HTML standalone con el componente compilado
+function createStandaloneHTML(compiledCode, componentName) {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${componentName} - Dossin</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    /* Reset CSS mínimo - El componente maneja sus propios estilos */
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+    }
+    body { 
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    
+    /* Estilos para inputs de los editores visuales del componente */
+    input[type="color"],
+    input[type="range"],
+    input[type="text"],
+    input[type="number"],
+    select {
+      cursor: pointer;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #e94560;
+      cursor: pointer;
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #e94560;
+      cursor: pointer;
+      border: none;
+    }
+    
+    /* Smooth transitions para el editor de estilos */
+    * {
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    // Código compilado del componente (incluye todos los estilos y funcionalidad del editor visual)
+    ${compiledCode}
+    
+    // Renderizar el componente
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    
+    // Extraer el componente del módulo compilado
+    const Component = ComponentModule.default || ComponentModule;
+    
+    root.render(React.createElement(Component));
+  </script>
+</body>
+</html>`;
+}
+
+// Función para guardar archivo en Downloads
+async function saveToDownloads(htmlContent, fileName, componentName) {
+  try {
+    // Obtener directorio home del usuario
+    const homeDir = os.homedir();
+    const downloadsDir = path.join(homeDir, 'Downloads', 'dossin-components');
+    
+    // Crear directorio si no existe
+    await fs.mkdir(downloadsDir, { recursive: true });
+    
+    // Generar nombre de archivo con timestamp si no se proporciona
+    let finalFileName = fileName;
+    if (!finalFileName) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      finalFileName = `${componentName}-${timestamp}.html`;
+    }
+    
+    // Asegurar extensión .html
+    if (!finalFileName.endsWith('.html')) {
+      finalFileName += '.html';
+    }
+    
+    const filePath = path.join(downloadsDir, finalFileName);
+    
+    // Guardar archivo
+    await fs.writeFile(filePath, htmlContent, 'utf-8');
+    
+    // Calcular hash MD5
+    const hash = createHash('md5').update(htmlContent).digest('hex');
+    
+    // Obtener tamaño del archivo
+    const stats = await fs.stat(filePath);
+    
+    return {
+      success: true,
+      localPath: filePath,
+      fileName: finalFileName,
+      fileSize: stats.size,
+      hash: hash,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    throw new Error(`Error al guardar archivo: ${error.message}`);
+  }
+}
+
+// Función para subir archivo al backend (Fase 2 - preparada para el futuro)
+async function uploadToBackend(htmlContent, metadata) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/components/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: metadata.fileName,
+        content: htmlContent,
+        metadata: {
+          componentName: metadata.componentName,
+          timestamp: metadata.timestamp,
+          size: metadata.fileSize,
+          hash: metadata.hash
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error al subir al backend: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.url || result.publicUrl;
+  } catch (error) {
+    // Si falla, no es crítico (es opcional por ahora)
+    console.error('Error al subir al backend:', error.message);
+    return null;
+  }
+}
+
 // Handler para listar herramientas
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -217,6 +407,50 @@ IMPORTANTE: Solo ejecuta consultas SELECT. Usa parámetros (?) para valores din�
           required: ["query"],
         },
       },
+      {
+        name: "compile_and_save_component",
+        description:
+          `Compila un componente React a un archivo HTML standalone y lo guarda en la carpeta Downloads del usuario.
+
+Esta herramienta toma código JSX de un componente React, lo compila usando esbuild, y genera un archivo HTML completo que incluye:
+- React y ReactDOM desde CDN
+- El componente compilado embebido
+- Estilos CSS básicos
+- Todo listo para abrir en el navegador o servir desde un servidor
+
+El archivo se guarda en ~/Downloads/dossin-components/ y puede ser servido directamente desde el backend sin necesidad de compilación adicional.
+
+CUÁNDO USAR:
+- Después de generar cualquier componente React con las herramientas anteriores
+- Cuando el usuario quiere guardar/exportar un componente
+- Para crear archivos listos para producción
+- Para optimizar recursos del backend (pre-compilación)
+
+OPCIONES FUTURAS:
+- uploadToBackend: false por defecto, true cuando el endpoint esté listo en el backend`,
+        inputSchema: {
+          type: "object",
+          properties: {
+            componentCode: {
+              type: "string",
+              description: "El código JSX completo del componente React a compilar. Debe incluir imports de React y hooks necesarios.",
+            },
+            componentName: {
+              type: "string",
+              description: "Nombre descriptivo del componente (ej: 'VolumenCargaProvincias', 'TurnosDelDia'). Se usa para el título y nombre del archivo.",
+            },
+            fileName: {
+              type: "string",
+              description: "Nombre personalizado para el archivo HTML (opcional). Si no se proporciona, se genera automáticamente con timestamp.",
+            },
+            uploadToBackend: {
+              type: "boolean",
+              description: "Si es true, intenta subir el archivo compilado al backend además de guardarlo localmente. Por defecto: false (Fase 2 - aún no implementado en backend)",
+            },
+          },
+          required: ["componentCode", "componentName"],
+        },
+      },
     ],
   };
 });
@@ -250,6 +484,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    }
+
+    if (request.params.name === "compile_and_save_component") {
+      const { 
+        componentCode, 
+        componentName, 
+        fileName = null,
+        uploadToBackend = false 
+      } = request.params.arguments;
+      
+      if (!componentCode || typeof componentCode !== "string") {
+        throw new Error("componentCode is required and must be a string");
+      }
+      
+      if (!componentName || typeof componentName !== "string") {
+        throw new Error("componentName is required and must be a string");
+      }
+
+      // Compilar el componente React
+      const compiledCode = await compileReactComponent(componentCode);
+      
+      // Crear HTML standalone
+      const htmlContent = createStandaloneHTML(compiledCode, componentName);
+      
+      // Guardar en Downloads
+      const saveResult = await saveToDownloads(htmlContent, fileName, componentName);
+      
+      // Intentar subir al backend si se solicita (Fase 2)
+      let backendUrl = null;
+      if (uploadToBackend) {
+        backendUrl = await uploadToBackend(htmlContent, saveResult);
+      }
+      
+      const response = {
+        ...saveResult,
+        backendUrl: backendUrl,
+        message: backendUrl 
+          ? `Componente compilado y guardado exitosamente. También subido al backend.`
+          : `Componente compilado y guardado exitosamente en ${saveResult.localPath}`
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response, null, 2),
           },
         ],
       };
