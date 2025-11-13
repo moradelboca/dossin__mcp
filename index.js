@@ -250,6 +250,29 @@ function createStandaloneHTML(compiledCode, componentName, dependencies = []) {
     .map(dep => `  <script crossorigin src="${dep.cdnUrl}"></script>`)
     .join('\n');
   
+  // Generar aliases dinámicos para cada dependencia
+  const aliasMapping = dependencies.map(dep => {
+    // Normalizar nombres comunes (react, react-dom, lucide, etc.)
+    const aliases = [];
+    
+    if (dep.name === 'react') {
+      aliases.push(`  window.react = window.react || window.React;`);
+      aliases.push(`  window.React = window.React || window.react;`);
+    } else if (dep.name === 'react-dom') {
+      aliases.push(`  window['react-dom'] = window['react-dom'] || window.ReactDOM;`);
+      aliases.push(`  window.ReactDOM = window.ReactDOM || window['react-dom'];`);
+    } else if (dep.name === 'lucide-react') {
+      aliases.push(`  window.lucide = window.lucide || window.Lucide || window.LucideReact || window.lucideReact;`);
+      aliases.push(`  window.LucideReact = window.LucideReact || window.lucide;`);
+    } else {
+      // Para otras librerías, crear alias genérico
+      aliases.push(`  window['${dep.name}'] = window['${dep.name}'] || window.${dep.globalName};`);
+      aliases.push(`  window.${dep.globalName} = window.${dep.globalName} || window['${dep.name}'];`);
+    }
+    
+    return aliases.join('\n');
+  }).join('\n');
+  
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -257,6 +280,15 @@ function createStandaloneHTML(compiledCode, componentName, dependencies = []) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${componentName} - Dossin</title>
 ${scriptTags}
+  <script>
+    // Preámbulo: Resolver problemas de globals y aliases UMD
+    
+    // 1. Definir __window para esbuild-generated code
+    var __window = window;
+    
+    // 2. Crear aliases normalizados para dependencias
+${aliasMapping}
+  </script>
   <style>
     /* Reset CSS mínimo - El componente maneja sus propios estilos */
     * { 
