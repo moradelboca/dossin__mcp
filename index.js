@@ -89,7 +89,7 @@ REQUISITOS OBLIGATORIOS DEL COMPONENTE:
    - Implementar fetch para comunicarse con el backend de Dossin (URL: ${BACKEND_URL})
    - El endpoint a usar es: POST ${BACKEND_URL}/database/query
    - El body debe contener: { sql: "tu_query_aqui", params: [] }
-   - Manejar correctamente las respuestas: result.rows contiene los datos
+   - Manejar correctamente las respuestas: result.data contiene los datos
    - Implementar estados de carga (loading), error y datos
    - Las consultas SQL deben ser precisas y optimizadas según la solicitud del usuario
    - Los datos deben actualizarse automáticamente al montar el componente
