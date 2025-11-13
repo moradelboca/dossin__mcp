@@ -201,6 +201,7 @@ async function compileReactComponent(componentCode, dependencies = []) {
       bundle: true,
       format: 'iife',
       globalName: 'ComponentModule',
+      platform: 'browser', // ⭐ IMPORTANTE: Indica que compilamos para navegador
       jsx: 'transform',
       jsxFactory: 'React.createElement',
       jsxFragment: 'React.Fragment',
@@ -210,14 +211,25 @@ async function compileReactComponent(componentCode, dependencies = []) {
         'process.env.NODE_ENV': '"production"'
       },
       minify: false, // No minificar para mejor debugging
-      sourcemap: false
+      sourcemap: false,
+      // ⭐ Evitar que esbuild genere código CommonJS wrapper
+      footer: {
+        js: '// Compiled by Dossin MCP Server'
+      }
     });
     
     // Leer código compilado
     let compiledCode = await fs.readFile(tempOutputFile, 'utf-8');
     
-    // Reemplazar require() por acceso a variables globales del navegador
-    // Ejemplo: require("react") -> window.React
+    // ⭐ POST-PROCESAMIENTO: Limpiar y normalizar el código generado
+    
+    // 1. Reemplazar __toESM(__window.X) por window.X directamente
+    compiledCode = compiledCode.replace(/__toESM\(__window\.(\w+)\)/g, 'window.$1');
+    
+    // 2. Reemplazar cualquier __window.X por window.X
+    compiledCode = compiledCode.replace(/__window\.(\w+)/g, 'window.$1');
+    
+    // 3. Reemplazar require("package") por window.GlobalName para cada dependencia
     dependencies.forEach(dep => {
       // Patrón para encontrar require("package-name") o require('package-name')
       const requirePattern = new RegExp(
@@ -226,6 +238,12 @@ async function compileReactComponent(componentCode, dependencies = []) {
       );
       compiledCode = compiledCode.replace(requirePattern, `window.${dep.globalName}`);
     });
+    
+    // 4. Eliminar definición de __require si existe (código muerto que genera esbuild)
+    compiledCode = compiledCode.replace(
+      /var __require = \/\* @__PURE__ \*\/ \(\(x\)[\s\S]*?\}\)\(function\(x\)[\s\S]*?\}\);?\n?/g,
+      '// __require removed - using window globals'
+    );
     
     // Limpiar archivos temporales
     await unlink(tempInputFile).catch(() => {});
