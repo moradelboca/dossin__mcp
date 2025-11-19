@@ -205,6 +205,15 @@ root.render(React.createElement(${componentName}));
     await writeFile(tempInputFile, codeWithRender, 'utf-8');
     
     // Compilar con esbuild a formato IIFE bundleando todas las dependencias
+    // Resolver la ruta correcta de node_modules (puede estar en el directorio del script o en el cwd)
+    const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+    const possibleNodeModulesPaths = [
+      path.join(scriptDir, 'node_modules'),
+      path.join(process.cwd(), 'node_modules'),
+      path.join(scriptDir, '..', 'node_modules'),
+      path.join(scriptDir, '..', '..', 'node_modules'),
+    ];
+    
     await esbuild.build({
       entryPoints: [tempInputFile],
       outfile: tempOutputFile,
@@ -217,7 +226,7 @@ root.render(React.createElement(${componentName}));
       jsxFragment: 'React.Fragment',
       target: 'es2020',
       external: [],           // ⭐ NO external - bundlear todo
-      nodePaths: [path.join(process.cwd(), 'node_modules')],  // ⭐ Dónde buscar módulos
+      nodePaths: possibleNodeModulesPaths,  // ⭐ Múltiples rutas posibles para node_modules
       define: {
         'process.env.NODE_ENV': '"production"'
       },
