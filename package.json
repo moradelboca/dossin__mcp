@@ -8,8 +8,7 @@
   "private": false,
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js",
-    "prepare": "npm install --production"
+    "dev": "node --watch index.js"
   },
   "keywords": [
     "mcp",
