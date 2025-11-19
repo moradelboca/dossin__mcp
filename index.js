@@ -122,18 +122,15 @@ REQUISITOS OBLIGATORIOS DEL COMPONENTE:
    - Considerar casos edge: datos vacíos, muchos registros, valores nulos, etc.
    - El diseño debe ser funcional y adaptarse al contenido
 
-6. **DEPENDENCIAS Y LIBRERÍAS EXTERNAS (ESM)**:
-   - Cuando uses librerías externas (lucide-react, chart.js, etc.), DEBES especificarlas al compilar
-   - Al llamar a compile_and_save_component, incluir el parámetro "dependencies" con la lista completa
-   - Formato de cada dependencia: { name: "nombre-paquete", esmUrl: "URL-ESM-del-CDN" }
-   - Librerías comunes disponibles (usar CDN ESM como esm.sh o jspm.dev):
-     * React: { name: "react", esmUrl: "https://esm.sh/react@18" }
-     * ReactDOM: { name: "react-dom", esmUrl: "https://esm.sh/react-dom@18" }
-     * Lucide Icons: { name: "lucide-react", esmUrl: "https://esm.sh/lucide-react@latest" }
-     * Chart.js: { name: "chart.js", esmUrl: "https://esm.sh/chart.js@4" }
-   - IMPORTANTE: Usar URLs ESM (esm.sh, jspm.dev, skypack.dev), NO URLs UMD
-   - Si no especificas dependencias, solo React y ReactDOM se incluirán por defecto
-   - El sistema usa Import Maps para mapear los nombres de paquetes a las URLs
+6. **DEPENDENCIAS Y LIBRERÍAS EXTERNAS (BUNDLING AUTOMÁTICO)**:
+   - Las dependencias se detectan y bundean automáticamente - NO necesitas especificarlas
+   - Simplemente usa imports normales en tu código JSX: import React from 'react'
+   - esbuild detectará automáticamente todas las dependencias y las incluirá en el HTML
+   - Librerías disponibles por defecto: react, react-dom, lucide-react
+   - Para usar otras librerías (chart.js, axios, etc.), deben estar instaladas en el MCP
+   - El HTML resultante (~200KB) incluye TODAS las dependencias bundleadas
+   - No uses el parámetro 'dependencies' - ya no existe
+   - Ejemplo: import React, { useState } from 'react'; import { Phone } from 'lucide-react';
 
 RECORDATORIOS CRÍTICOS:
 - SIEMPRE genera el componente React completo, sin excepciones
@@ -144,7 +141,7 @@ RECORDATORIOS CRÍTICOS:
 - Solo muestra información relevante a lo solicitado
 - Los componentes deben ser atómicos: una responsabilidad clara y específica
 - Los datos se cargan automáticamente en tiempo real al montar el componente
-- SIEMPRE especifica las dependencias correctamente al compilar
+- Las dependencias se bundean automáticamente - solo usa imports normales
 `.trim();
 
 // Función para obtener el schema de la base de datos desde el backend
@@ -376,38 +373,7 @@ async function saveToDownloads(htmlContent, fileName, componentName) {
   }
 }
 
-// Función para subir archivo al backend (Fase 2 - preparada para el futuro)
-async function uploadToBackend(htmlContent, metadata) {
-  try {
-    const response = await fetch(`${BACKEND_URL}/components/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileName: metadata.fileName,
-        content: htmlContent,
-        metadata: {
-          componentName: metadata.componentName,
-          timestamp: metadata.timestamp,
-          size: metadata.fileSize,
-          hash: metadata.hash
-        }
-      })
-    });
 
-    if (!response.ok) {
-      throw new Error(`Error al subir al backend: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    return result.url || result.publicUrl;
-  } catch (error) {
-    // Si falla, no es crítico (es opcional por ahora)
-    console.error('Error al subir al backend:', error.message);
-    return null;
-  }
-}
 
 // Handler para listar herramientas
 server.setRequestHandler(ListToolsRequestSchema, async () => {
