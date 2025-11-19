@@ -73,9 +73,9 @@ Ejecuta la siguiente query: SELECT * FROM camiones LIMIT 10
 
 **Respuesta**: JSON con columnas, filas y conteo.
 
-### 3. compile_and_save_component ⭐ NUEVO (ESM)
+### 3. compile_and_save_component ⭐ NUEVO (Bundling Completo)
 
-Compila componentes React a archivos HTML standalone usando **ES Modules** y los guarda en `~/Downloads/dossin-components/`.
+Compila componentes React a archivos HTML standalone con **bundling completo** y los guarda en `~/Downloads/dossin-components/`.
 
 **Uso en Claude**:
 ```
@@ -85,19 +85,21 @@ Usuario: "Exporta este componente a HTML"
 ```
 
 **Funcionalidad**:
-- Compila JSX a JavaScript ESM usando esbuild
-- Genera archivo HTML standalone con Import Maps
-- Carga dependencias desde CDN ESM (esm.sh, jspm.dev)
-- Tree-shaking automático (solo carga lo que se usa)
+- Compila JSX a JavaScript usando esbuild
+- Bundlea TODAS las dependencias (React, lucide-react, etc.) en el HTML
+- Genera archivo HTML standalone de ~200KB
+- Detección automática de dependencias (no necesitas especificarlas)
 - Guarda en `~/Downloads/dossin-components/`
 - Retorna: ruta del archivo, tamaño, hash MD5
-- Listo para servir directamente desde el backend (sin compilación adicional)
+- Listo para servir directamente desde el backend
 
-**Ventajas del sistema ESM**:
-- ✅ Código más limpio y moderno
-- ✅ Menor tamaño de bundle (tree-shaking)
-- ✅ Mejor performance
-- ✅ Estándar web actual
+**Ventajas del bundling completo**:
+- ✅ HTML completamente standalone (~200KB)
+- ✅ No depende de CDNs externos (excepto Tailwind)
+- ✅ Funciona offline
+- ✅ Funciona en iframes aislados
+- ✅ Perfecto para S3 + CloudFront
+- ✅ Se cachea eficientemente
 
 **Ejemplo de respuesta**:
 ```json
@@ -528,16 +530,17 @@ Los componentes generados son puntos de partida. Puedes extenderlos:
 4. **Usa HTTPS** en producción
 5. **Configura CORS** apropiadamente (no usar wildcard `*` en producción)
 
-## Sistema ESM (ES Modules)
+## Sistema de Bundling Completo
 
-### ¿Qué es ESM?
+### ¿Cómo funciona?
 
-El servidor MCP ahora usa **ES Modules** (ESM) en lugar de UMD para compilar componentes React. Esto significa:
+El servidor MCP usa **esbuild** para bundlear todas las dependencias en un solo archivo HTML standalone:
 
-- **Import Maps**: Los navegadores modernos mapean nombres de paquetes a URLs
-- **Tree-shaking**: Solo se carga el código que realmente se usa
-- **Código más limpio**: Sin wrappers ni variables globales complejas
-- **Estándar moderno**: ESM es el futuro de JavaScript
+- **Bundling automático**: esbuild detecta automáticamente todos los imports
+- **Formato IIFE**: Compatible con file://, S3, iframes
+- **Minificación**: Código optimizado y comprimido
+- **Standalone**: No depende de CDNs externos (excepto Tailwind)
+- **Offline**: Funciona sin conexión a internet
 
 ### Compatibilidad
 
@@ -545,8 +548,8 @@ El servidor MCP ahora usa **ES Modules** (ESM) en lugar de UMD para compilar com
 |-----------|----------------|
 | Chrome    | 89+ (2021)     |
 | Edge      | 89+ (2021)     |
-| Safari    | 16.4+ (2023)   |
-| Firefox   | 108+ (2022)    |
+| Safari    | 14+ (2020)     |
+| Firefox   | 78+ (2020)     |
 
 ### Ejemplo de HTML Generado
 
@@ -554,43 +557,42 @@ El servidor MCP ahora usa **ES Modules** (ESM) en lugar de UMD para compilar com
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- Import Map: Mapea paquetes a URLs ESM -->
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18",
-      "react-dom": "https://esm.sh/react-dom@18",
-      "lucide-react": "https://esm.sh/lucide-react@latest"
-    }
-  }
-  </script>
+  <title>MiComponente - Dossin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
   <div id="root"></div>
   
-  <!-- Componente como módulo ESM -->
+  <!-- Componente bundleado (~200KB) -->
   <script type="module">
-    import React from 'react';
-    import { createRoot } from 'react-dom/client';
-    import { Phone } from 'lucide-react';
-    
-    const App = () => <div><Phone /> Mi App</div>;
-    
-    createRoot(document.getElementById('root')).render(<App />);
+    // Todo el código de React, lucide-react, y tu componente
+    // está bundleado aquí en formato IIFE
+    var DossinApp = (function() {
+      // ... código minificado de React
+      // ... código minificado de lucide-react
+      // ... tu componente
+      // ... código de renderizado
+    })();
   </script>
 </body>
 </html>
 ```
 
-### CDNs ESM Soportados
+### Dependencias Incluidas
 
-- **esm.sh** (recomendado): `https://esm.sh/package@version`
-- **jspm.dev**: `https://jspm.dev/package@version`
-- **skypack.dev**: `https://cdn.skypack.dev/package@version`
+Por defecto, el MCP tiene instaladas:
+- **react** (v18)
+- **react-dom** (v18)
+- **lucide-react** (latest)
 
-### Migración desde UMD
+Para usar otras librerías, deben estar instaladas en `node_modules` del MCP.
 
-Si tienes componentes compilados con el sistema anterior (UMD), necesitas recompilarlos con el nuevo sistema ESM. Ver `MIGRATION_TO_ESM.md` para más detalles.
+### Migración desde versiones anteriores
+
+Si tienes componentes compilados con el sistema anterior, simplemente recompílalos. El nuevo sistema:
+- NO requiere especificar dependencias manualmente
+- Detecta automáticamente todos los imports
+- Genera archivos más grandes (~200KB) pero completamente standalone
 
 ## Documentación Adicional
 
