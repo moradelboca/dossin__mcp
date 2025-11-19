@@ -466,40 +466,45 @@ IMPORTANTE: Solo ejecuta consultas SELECT. Usa parámetros (?) para valores din�
       {
         name: "compile_and_save_component",
         description:
-          `Compila un componente React a un archivo HTML standalone usando ESM (ES Modules) y lo guarda en la carpeta Downloads del usuario.
+          `Compila un componente React a un archivo HTML standalone con bundling completo y lo guarda en la carpeta Downloads del usuario.
 
-Esta herramienta toma código JSX de un componente React, lo compila usando esbuild a formato ESM, y genera un archivo HTML completo que incluye:
-- Import Map para mapear nombres de paquetes a URLs ESM
-- Todas las dependencias cargadas como módulos ESM desde CDN (esm.sh, jspm.dev, etc.)
-- El componente compilado como módulo ESM
-- Estilos CSS del componente preservados
-- Todo listo para abrir en navegadores modernos
+Esta herramienta toma código JSX de un componente React, lo compila usando esbuild, y genera un archivo HTML completo que incluye:
+- Todas las dependencias bundleadas (React, lucide-react, etc.) - ~200KB minificado
+- El componente compilado y listo para ejecutar
+- Tailwind CSS desde CDN para estilos
+- Renderizado automático del componente
+- Todo en un solo archivo HTML standalone
 
-El archivo se guarda en ~/Downloads/dossin-components/ y puede ser servido directamente desde el backend sin necesidad de compilación adicional.
+El archivo se guarda en ~/Downloads/dossin-components/ y puede ser:
+- Abierto directamente en el navegador (file://)
+- Subido a S3 y servido desde CloudFront
+- Cargado en un iframe desde cualquier aplicación
+- Usado offline sin conexión a internet
 
-IMPORTANTE - DEPENDENCIAS ESM:
-- Claude DEBE analizar el código del componente e identificar todas las dependencias (imports)
-- Para cada dependencia, proporcionar: name y esmUrl
-- USAR URLs ESM (esm.sh, jspm.dev, skypack.dev), NO URLs UMD
-- Ejemplo de dependencias comunes:
-  * React: { name: "react", esmUrl: "https://esm.sh/react@18" }
-  * ReactDOM: { name: "react-dom", esmUrl: "https://esm.sh/react-dom@18" }
-  * Lucide: { name: "lucide-react", esmUrl: "https://esm.sh/lucide-react@latest" }
-  * Chart.js: { name: "chart.js", esmUrl: "https://esm.sh/chart.js@4" }
+IMPORTANTE - DETECCIÓN AUTOMÁTICA DE DEPENDENCIAS:
+- NO necesitas especificar dependencias manualmente
+- esbuild detecta automáticamente todos los imports del código
+- Las dependencias deben estar instaladas en node_modules del MCP
+- Dependencias incluidas por defecto: react, react-dom, lucide-react
+- Si usas otras librerías (chart.js, axios, etc.), deben estar instaladas en el MCP
 
-VENTAJAS DE ESM:
-- Código más limpio y moderno
-- Tree-shaking automático (solo carga lo que se usa)
-- No necesita variables globales ni aliases complejos
-- Funciona con cualquier librería que tenga build ESM
+VENTAJAS DEL BUNDLING:
+- HTML completamente standalone (~200KB)
+- No depende de CDNs externos (excepto Tailwind)
+- Funciona offline
+- Funciona en iframes aislados
+- Perfecto para S3 + CloudFront
+- Se cachea eficientemente
 
 COMPATIBILIDAD:
-- Funciona en todos los navegadores modernos (Chrome 89+, Firefox 108+, Safari 16.4+, Edge 89+)
+- Funciona en todos los navegadores modernos
+- Compatible con file://, http://, https://
+- Funciona en iframes con sandbox
 
 CUÁNDO USAR:
 - Después de generar cualquier componente React
-- Cuando el usuario quiere guardar/exportar un componente
-- Para crear archivos listos para producción`,
+- Para crear archivos listos para producción
+- Para subir a S3 y servir desde tu aplicación`,
         inputSchema: {
           type: "object",
           properties: {
@@ -514,28 +519,6 @@ CUÁNDO USAR:
             fileName: {
               type: "string",
               description: "Nombre personalizado para el archivo HTML (opcional). Si no se proporciona, se genera automáticamente con timestamp.",
-            },
-            dependencies: {
-              type: "array",
-              description: "Lista de dependencias externas que usa el componente. Claude debe analizar los imports y crear esta lista automáticamente. Cada dependencia debe incluir: name (nombre del paquete npm) y esmUrl (URL ESM del CDN como esm.sh, jspm.dev, o skypack.dev).",
-              items: {
-                type: "object",
-                properties: {
-                  name: {
-                    type: "string",
-                    description: "Nombre del paquete npm (ej: 'react', 'lucide-react', 'chart.js')"
-                  },
-                  esmUrl: {
-                    type: "string",
-                    description: "URL ESM completa del CDN (ej: 'https://esm.sh/react@18', 'https://esm.sh/lucide-react@latest')"
-                  }
-                },
-                required: ["name", "esmUrl"]
-              }
-            },
-            uploadToBackend: {
-              type: "boolean",
-              description: "Si es true, intenta subir el archivo compilado al backend además de guardarlo localmente. Por defecto: false (Fase 2 - aún no implementado en backend)",
             },
           },
           required: ["componentCode", "componentName"],
@@ -583,9 +566,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { 
         componentCode, 
         componentName, 
-        fileName = null,
-        dependencies = [],
-        uploadToBackend = false 
+        fileName = null
       } = request.params.arguments;
       
       if (!componentCode || typeof componentCode !== "string") {
@@ -606,19 +587,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // Guardar en Downloads
       const saveResult = await saveToDownloads(htmlContent, fileName, componentName);
       
-      // Intentar subir al backend si se solicita (Fase 2)
-      let backendUrl = null;
-      if (uploadToBackend) {
-        backendUrl = await uploadToBackend(htmlContent, saveResult);
-      }
-      
       const response = {
         ...saveResult,
-        backendUrl: backendUrl,
-        dependencies: finalDependencies.map(d => d.name),
-        message: backendUrl 
-          ? `Componente compilado y guardado exitosamente. También subido al backend.`
-          : `Componente compilado y guardado exitosamente en ${saveResult.localPath}`
+        message: `Componente compilado y guardado exitosamente en ${saveResult.localPath}`
       };
       
       return {
