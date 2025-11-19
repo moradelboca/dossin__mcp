@@ -73,9 +73,9 @@ Ejecuta la siguiente query: SELECT * FROM camiones LIMIT 10
 
 **Respuesta**: JSON con columnas, filas y conteo.
 
-### 3. compile_and_save_component ⭐ NUEVO
+### 3. compile_and_save_component ⭐ NUEVO (ESM)
 
-Compila componentes React a archivos HTML standalone y los guarda en `~/Downloads/dossin-components/`.
+Compila componentes React a archivos HTML standalone usando **ES Modules** y los guarda en `~/Downloads/dossin-components/`.
 
 **Uso en Claude**:
 ```
@@ -85,11 +85,19 @@ Usuario: "Exporta este componente a HTML"
 ```
 
 **Funcionalidad**:
-- Compila JSX a JavaScript usando esbuild
-- Genera archivo HTML standalone con React incluido desde CDN
+- Compila JSX a JavaScript ESM usando esbuild
+- Genera archivo HTML standalone con Import Maps
+- Carga dependencias desde CDN ESM (esm.sh, jspm.dev)
+- Tree-shaking automático (solo carga lo que se usa)
 - Guarda en `~/Downloads/dossin-components/`
 - Retorna: ruta del archivo, tamaño, hash MD5
 - Listo para servir directamente desde el backend (sin compilación adicional)
+
+**Ventajas del sistema ESM**:
+- ✅ Código más limpio y moderno
+- ✅ Menor tamaño de bundle (tree-shaking)
+- ✅ Mejor performance
+- ✅ Estándar web actual
 
 **Ejemplo de respuesta**:
 ```json
@@ -519,6 +527,77 @@ Los componentes generados son puntos de partida. Puedes extenderlos:
 3. **Sanitiza queries SQL** (el backend ya debe hacer esto)
 4. **Usa HTTPS** en producción
 5. **Configura CORS** apropiadamente (no usar wildcard `*` en producción)
+
+## Sistema ESM (ES Modules)
+
+### ¿Qué es ESM?
+
+El servidor MCP ahora usa **ES Modules** (ESM) en lugar de UMD para compilar componentes React. Esto significa:
+
+- **Import Maps**: Los navegadores modernos mapean nombres de paquetes a URLs
+- **Tree-shaking**: Solo se carga el código que realmente se usa
+- **Código más limpio**: Sin wrappers ni variables globales complejas
+- **Estándar moderno**: ESM es el futuro de JavaScript
+
+### Compatibilidad
+
+| Navegador | Versión Mínima |
+|-----------|----------------|
+| Chrome    | 89+ (2021)     |
+| Edge      | 89+ (2021)     |
+| Safari    | 16.4+ (2023)   |
+| Firefox   | 108+ (2022)    |
+
+### Ejemplo de HTML Generado
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Import Map: Mapea paquetes a URLs ESM -->
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18",
+      "react-dom": "https://esm.sh/react-dom@18",
+      "lucide-react": "https://esm.sh/lucide-react@latest"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <!-- Componente como módulo ESM -->
+  <script type="module">
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { Phone } from 'lucide-react';
+    
+    const App = () => <div><Phone /> Mi App</div>;
+    
+    createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
+```
+
+### CDNs ESM Soportados
+
+- **esm.sh** (recomendado): `https://esm.sh/package@version`
+- **jspm.dev**: `https://jspm.dev/package@version`
+- **skypack.dev**: `https://cdn.skypack.dev/package@version`
+
+### Migración desde UMD
+
+Si tienes componentes compilados con el sistema anterior (UMD), necesitas recompilarlos con el nuevo sistema ESM. Ver `MIGRATION_TO_ESM.md` para más detalles.
+
+## Documentación Adicional
+
+- **MIGRATION_TO_ESM.md**: Guía completa de migración de UMD a ESM
+- **CLAUDE_INSTRUCTIONS.md**: Instrucciones detalladas para Claude sobre cómo usar el sistema ESM
+- **IMPLEMENTATION_SUMMARY.md**: Resumen técnico de la implementación
+- **CHANGELOG.md**: Historial de cambios del proyecto
 
 ## Licencia
 

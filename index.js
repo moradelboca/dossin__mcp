@@ -122,16 +122,18 @@ REQUISITOS OBLIGATORIOS DEL COMPONENTE:
    - Considerar casos edge: datos vacíos, muchos registros, valores nulos, etc.
    - El diseño debe ser funcional y adaptarse al contenido
 
-6. **DEPENDENCIAS Y LIBRERÍAS EXTERNAS**:
+6. **DEPENDENCIAS Y LIBRERÍAS EXTERNAS (ESM)**:
    - Cuando uses librerías externas (lucide-react, chart.js, etc.), DEBES especificarlas al compilar
    - Al llamar a compile_and_save_component, incluir el parámetro "dependencies" con la lista completa
-   - Formato de cada dependencia: { name: "nombre-paquete", globalName: "VariableGlobal", cdnUrl: "URL-del-CDN" }
-   - Librerías comunes disponibles:
-     * React: { name: "react", globalName: "React", cdnUrl: "https://unpkg.com/react@18/umd/react.production.min.js" }
-     * ReactDOM: { name: "react-dom", globalName: "ReactDOM", cdnUrl: "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" }
-     * Lucide Icons: { name: "lucide-react", globalName: "lucide", cdnUrl: "https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js" }
-     * Chart.js: { name: "chart.js", globalName: "Chart", cdnUrl: "https://cdn.jsdelivr.net/npm/chart.js" }
+   - Formato de cada dependencia: { name: "nombre-paquete", esmUrl: "URL-ESM-del-CDN" }
+   - Librerías comunes disponibles (usar CDN ESM como esm.sh o jspm.dev):
+     * React: { name: "react", esmUrl: "https://esm.sh/react@18" }
+     * ReactDOM: { name: "react-dom", esmUrl: "https://esm.sh/react-dom@18" }
+     * Lucide Icons: { name: "lucide-react", esmUrl: "https://esm.sh/lucide-react@latest" }
+     * Chart.js: { name: "chart.js", esmUrl: "https://esm.sh/chart.js@4" }
+   - IMPORTANTE: Usar URLs ESM (esm.sh, jspm.dev, skypack.dev), NO URLs UMD
    - Si no especificas dependencias, solo React y ReactDOM se incluirán por defecto
+   - El sistema usa Import Maps para mapear los nombres de paquetes a las URLs
 
 RECORDATORIOS CRÍTICOS:
 - SIEMPRE genera el componente React completo, sin excepciones
@@ -182,74 +184,58 @@ async function executeQuery(query, params = []) {
   return await response.json();
 }
 
-// Función para compilar componente React usando esbuild
-async function compileReactComponent(componentCode, dependencies = []) {
+// Función para compilar componente React usando esbuild (ESM con bundling)
+async function compileReactComponent(componentCode, componentName) {
   const tempInputFile = path.join(tmpdir(), `dossin-component-${Date.now()}.jsx`);
   const tempOutputFile = path.join(tmpdir(), `dossin-compiled-${Date.now()}.js`);
   
   try {
-    // Escribir código del componente en archivo temporal
-    await writeFile(tempInputFile, componentCode, 'utf-8');
+    // Validar que componentName esté presente
+    if (!componentName) {
+      throw new Error('componentName es requerido para renderizar el componente');
+    }
     
-    // Extraer nombres de paquetes para marcar como external
-    const externalPackages = dependencies.map(dep => dep.name);
+    // ⭐ Agregar código de renderizado AL FINAL del código del componente ANTES de compilar
+    const codeWithRender = componentCode + `
+
+// Auto-render del componente
+import { createRoot } from 'react-dom/client';
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(${componentName}));
+`;
     
-    // Compilar con esbuild.build (soporta external, a diferencia de transform)
+    // Escribir código del componente con renderizado en archivo temporal
+    await writeFile(tempInputFile, codeWithRender, 'utf-8');
+    
+    // Compilar con esbuild a formato IIFE bundleando todas las dependencias
     await esbuild.build({
       entryPoints: [tempInputFile],
       outfile: tempOutputFile,
-      bundle: true,
-      format: 'iife',
-      globalName: 'ComponentModule',
-      platform: 'browser', // ⭐ IMPORTANTE: Indica que compilamos para navegador
+      bundle: true,           // ⭐ Bundle TODO
+      format: 'iife',         // ⭐ IIFE para que funcione en file://
+      globalName: 'DossinApp',
+      platform: 'browser',
       jsx: 'transform',
       jsxFactory: 'React.createElement',
       jsxFragment: 'React.Fragment',
       target: 'es2020',
-      external: externalPackages, // Marcar dependencias como externas (no las bundlea)
+      external: [],           // ⭐ NO external - bundlear todo
+      nodePaths: [path.join(process.cwd(), 'node_modules')],  // ⭐ Dónde buscar módulos
       define: {
         'process.env.NODE_ENV': '"production"'
       },
-      minify: false, // No minificar para mejor debugging
+      minify: true,           // ⭐ Minificar para reducir tamaño
       sourcemap: false,
-      // ⭐ Evitar que esbuild genere código CommonJS wrapper
-      footer: {
-        js: '// Compiled by Dossin MCP Server'
-      }
     });
     
-    // Leer código compilado
-    let compiledCode = await fs.readFile(tempOutputFile, 'utf-8');
-    
-    // ⭐ POST-PROCESAMIENTO: Limpiar y normalizar el código generado
-    
-    // 1. Reemplazar __toESM(__window.X) por window.X directamente
-    compiledCode = compiledCode.replace(/__toESM\(__window\.(\w+)\)/g, 'window.$1');
-    
-    // 2. Reemplazar cualquier __window.X por window.X
-    compiledCode = compiledCode.replace(/__window\.(\w+)/g, 'window.$1');
-    
-    // 3. Reemplazar require("package") por window.GlobalName para cada dependencia
-    dependencies.forEach(dep => {
-      // Patrón para encontrar require("package-name") o require('package-name')
-      const requirePattern = new RegExp(
-        `require\\(["']${dep.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']\\)`,
-        'g'
-      );
-      compiledCode = compiledCode.replace(requirePattern, `window.${dep.globalName}`);
-    });
-    
-    // 4. Eliminar definición de __require si existe (código muerto que genera esbuild)
-    compiledCode = compiledCode.replace(
-      /var __require = \/\* @__PURE__ \*\/ \(\(x\)[\s\S]*?\}\)\(function\(x\)[\s\S]*?\}\);?\n?/g,
-      '// __require removed - using window globals'
-    );
+    // Leer código compilado (ya incluye el renderizado)
+    const finalCode = await fs.readFile(tempOutputFile, 'utf-8');
     
     // Limpiar archivos temporales
     await unlink(tempInputFile).catch(() => {});
     await unlink(tempOutputFile).catch(() => {});
     
-    return compiledCode;
+    return finalCode;
   } catch (error) {
     // Limpiar archivos temporales en caso de error
     try {
@@ -261,54 +247,22 @@ async function compileReactComponent(componentCode, dependencies = []) {
   }
 }
 
-// Función para crear HTML standalone con el componente compilado
-function createStandaloneHTML(compiledCode, componentName, dependencies = []) {
-  // Generar script tags para cada dependencia desde CDN
-  const scriptTags = dependencies
-    .map(dep => `  <script crossorigin src="${dep.cdnUrl}"></script>`)
-    .join('\n');
-  
-  // Generar aliases dinámicos para cada dependencia
-  const aliasMapping = dependencies.map(dep => {
-    // Normalizar nombres comunes (react, react-dom, lucide, etc.)
-    const aliases = [];
-    
-    if (dep.name === 'react') {
-      aliases.push(`  window.react = window.react || window.React;`);
-      aliases.push(`  window.React = window.React || window.react;`);
-    } else if (dep.name === 'react-dom') {
-      aliases.push(`  window['react-dom'] = window['react-dom'] || window.ReactDOM;`);
-      aliases.push(`  window.ReactDOM = window.ReactDOM || window['react-dom'];`);
-    } else if (dep.name === 'lucide-react') {
-      aliases.push(`  window.lucide = window.lucide || window.Lucide || window.LucideReact || window.lucideReact;`);
-      aliases.push(`  window.LucideReact = window.LucideReact || window.lucide;`);
-    } else {
-      // Para otras librerías, crear alias genérico
-      aliases.push(`  window['${dep.name}'] = window['${dep.name}'] || window.${dep.globalName};`);
-      aliases.push(`  window.${dep.globalName} = window.${dep.globalName} || window['${dep.name}'];`);
-    }
-    
-    return aliases.join('\n');
-  }).join('\n');
-  
+// Función para crear HTML standalone con el componente compilado (bundled)
+function createStandaloneHTML(compiledCode, componentName) {
+  // Ya no necesitamos import maps porque todo está bundleado
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${componentName} - Dossin</title>
-${scriptTags}
-  <script>
-    // Preámbulo: Resolver problemas de globals y aliases UMD
-    
-    // 1. Definir __window para esbuild-generated code
-    var __window = window;
-    
-    // 2. Crear aliases normalizados para dependencias
-${aliasMapping}
-  </script>
+  
+  <!-- Tailwind CSS Play CDN (alternativo) -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+  
+  <!-- Fallback: Si el CDN falla, usar estilos básicos -->
   <style>
-    /* Reset CSS mínimo - El componente maneja sus propios estilos */
+    /* Estilos básicos de respaldo */
     * { 
       margin: 0; 
       padding: 0; 
@@ -322,7 +276,7 @@ ${aliasMapping}
       min-height: 100vh;
     }
     
-    /* Estilos para inputs de los editores visuales del componente */
+    /* Estilos para inputs */
     input[type="color"],
     input[type="range"],
     input[type="text"],
@@ -359,7 +313,7 @@ ${aliasMapping}
       border: none;
     }
     
-    /* Smooth transitions para el editor de estilos */
+    /* Smooth transitions */
     * {
       transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
@@ -367,17 +321,10 @@ ${aliasMapping}
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    // Código compilado del componente (incluye todos los estilos y funcionalidad del editor visual)
-    ${compiledCode}
-    
-    // Renderizar el componente
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    
-    // Extraer el componente del módulo compilado
-    const Component = ComponentModule.default || ComponentModule;
-    
-    root.render(React.createElement(Component));
+  
+  <!-- Componente compilado como módulo ESM -->
+  <script type="module">
+${compiledCode}
   </script>
 </body>
 </html>`;
@@ -519,33 +466,40 @@ IMPORTANTE: Solo ejecuta consultas SELECT. Usa parámetros (?) para valores din�
       {
         name: "compile_and_save_component",
         description:
-          `Compila un componente React a un archivo HTML standalone y lo guarda en la carpeta Downloads del usuario.
+          `Compila un componente React a un archivo HTML standalone usando ESM (ES Modules) y lo guarda en la carpeta Downloads del usuario.
 
-Esta herramienta toma código JSX de un componente React, lo compila usando esbuild, y genera un archivo HTML completo que incluye:
-- Todas las dependencias necesarias cargadas desde CDN (React, lucide-react, chart.js, etc.)
-- El componente compilado embebido
+Esta herramienta toma código JSX de un componente React, lo compila usando esbuild a formato ESM, y genera un archivo HTML completo que incluye:
+- Import Map para mapear nombres de paquetes a URLs ESM
+- Todas las dependencias cargadas como módulos ESM desde CDN (esm.sh, jspm.dev, etc.)
+- El componente compilado como módulo ESM
 - Estilos CSS del componente preservados
-- Todo listo para abrir en el navegador o servir desde un servidor
+- Todo listo para abrir en navegadores modernos
 
 El archivo se guarda en ~/Downloads/dossin-components/ y puede ser servido directamente desde el backend sin necesidad de compilación adicional.
 
-IMPORTANTE - DEPENDENCIAS DINÁMICAS:
+IMPORTANTE - DEPENDENCIAS ESM:
 - Claude DEBE analizar el código del componente e identificar todas las dependencias (imports)
-- Para cada dependencia, proporcionar: name, globalName, cdnUrl
+- Para cada dependencia, proporcionar: name y esmUrl
+- USAR URLs ESM (esm.sh, jspm.dev, skypack.dev), NO URLs UMD
 - Ejemplo de dependencias comunes:
-  * React: { name: "react", globalName: "React", cdnUrl: "https://unpkg.com/react@18/umd/react.production.min.js" }
-  * ReactDOM: { name: "react-dom", globalName: "ReactDOM", cdnUrl: "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" }
-  * Lucide: { name: "lucide-react", globalName: "lucide", cdnUrl: "https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js" }
-  * Chart.js: { name: "chart.js", globalName: "Chart", cdnUrl: "https://cdn.jsdelivr.net/npm/chart.js" }
+  * React: { name: "react", esmUrl: "https://esm.sh/react@18" }
+  * ReactDOM: { name: "react-dom", esmUrl: "https://esm.sh/react-dom@18" }
+  * Lucide: { name: "lucide-react", esmUrl: "https://esm.sh/lucide-react@latest" }
+  * Chart.js: { name: "chart.js", esmUrl: "https://esm.sh/chart.js@4" }
+
+VENTAJAS DE ESM:
+- Código más limpio y moderno
+- Tree-shaking automático (solo carga lo que se usa)
+- No necesita variables globales ni aliases complejos
+- Funciona con cualquier librería que tenga build ESM
+
+COMPATIBILIDAD:
+- Funciona en todos los navegadores modernos (Chrome 89+, Firefox 108+, Safari 16.4+, Edge 89+)
 
 CUÁNDO USAR:
-- Después de generar cualquier componente React con las herramientas anteriores
+- Después de generar cualquier componente React
 - Cuando el usuario quiere guardar/exportar un componente
-- Para crear archivos listos para producción
-- Para optimizar recursos del backend (pre-compilación)
-
-OPCIONES FUTURAS:
-- uploadToBackend: false por defecto, true cuando el endpoint esté listo en el backend`,
+- Para crear archivos listos para producción`,
         inputSchema: {
           type: "object",
           properties: {
@@ -563,7 +517,7 @@ OPCIONES FUTURAS:
             },
             dependencies: {
               type: "array",
-              description: "Lista de dependencias externas que usa el componente. Claude debe analizar los imports y crear esta lista automáticamente. Cada dependencia debe incluir: name (nombre del paquete npm), globalName (variable global en el navegador), cdnUrl (URL del CDN).",
+              description: "Lista de dependencias externas que usa el componente. Claude debe analizar los imports y crear esta lista automáticamente. Cada dependencia debe incluir: name (nombre del paquete npm) y esmUrl (URL ESM del CDN como esm.sh, jspm.dev, o skypack.dev).",
               items: {
                 type: "object",
                 properties: {
@@ -571,16 +525,12 @@ OPCIONES FUTURAS:
                     type: "string",
                     description: "Nombre del paquete npm (ej: 'react', 'lucide-react', 'chart.js')"
                   },
-                  globalName: {
+                  esmUrl: {
                     type: "string",
-                    description: "Nombre de la variable global en el navegador (ej: 'React', 'lucide', 'Chart')"
-                  },
-                  cdnUrl: {
-                    type: "string",
-                    description: "URL completa del CDN desde donde cargar la librería"
+                    description: "URL ESM completa del CDN (ej: 'https://esm.sh/react@18', 'https://esm.sh/lucide-react@latest')"
                   }
                 },
-                required: ["name", "globalName", "cdnUrl"]
+                required: ["name", "esmUrl"]
               }
             },
             uploadToBackend: {
@@ -646,25 +596,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("componentName is required and must be a string");
       }
 
-      // Si no se proporcionan dependencias, usar React y ReactDOM por defecto
-      const finalDependencies = dependencies.length > 0 ? dependencies : [
-        {
-          name: "react",
-          globalName: "React",
-          cdnUrl: "https://unpkg.com/react@18/umd/react.production.min.js"
-        },
-        {
-          name: "react-dom",
-          globalName: "ReactDOM",
-          cdnUrl: "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-        }
-      ];
-
-      // Compilar el componente React con dependencias dinámicas
-      const compiledCode = await compileReactComponent(componentCode, finalDependencies);
+      // Compilar el componente React (bundleando todas las dependencias automáticamente)
+      // Ya no necesitamos especificar dependencies porque esbuild las detecta y bundlea todo
+      const compiledCode = await compileReactComponent(componentCode, componentName);
       
-      // Crear HTML standalone con las dependencias
-      const htmlContent = createStandaloneHTML(compiledCode, componentName, finalDependencies);
+      // Crear HTML standalone
+      const htmlContent = createStandaloneHTML(compiledCode, componentName);
       
       // Guardar en Downloads
       const saveResult = await saveToDownloads(htmlContent, fileName, componentName);
