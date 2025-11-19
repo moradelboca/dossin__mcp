@@ -64,41 +64,41 @@ No hay cambios en las dependencias de Node.js del servidor MCP.
 
 1. **Dependencias requeridas**: Ahora se necesita `react`, `react-dom`, `lucide-react` en node_modules
 2. **Tamaño de archivos**: HTML generado es ~200KB (vs ~15KB anterior)
-3. **Parámetro dependencies**: Ya no se usa (esbuild detecta automáticamente)
+3. **Parámetro dependencies**: ELIMINADO - esbuild detecta automáticamente todas las dependencias
+4. **Parámetro uploadToBackend**: ELIMINADO - funcionalidad no implementada
 
 ### 🔄 Migración
 
 Para componentes existentes, Claude debe:
-1. Cambiar URLs de CDN de UMD a ESM
-2. Usar `esm.sh`, `jspm.dev` o `skypack.dev`
-3. Eliminar el campo `globalName` de las dependencias
+1. **NO especificar dependencias** - el sistema las detecta automáticamente
+2. Usar imports normales de ES6: `import React from 'react'`
+3. Asegurarse que las dependencias estén instaladas en node_modules del MCP
 4. Recompilar el componente con el nuevo sistema
 
 ### 📚 Ejemplos
 
-#### Antes (v1.x - UMD)
-```json
+#### Antes (v1.x - UMD con dependencias manuales)
+```javascript
+// Claude especificaba dependencies manualmente
 {
+  "componentCode": "...",
+  "componentName": "MiComponente",
   "dependencies": [
-    {
-      "name": "lucide-react",
-      "globalName": "lucide",
-      "cdnUrl": "https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"
-    }
+    { "name": "lucide-react", "esmUrl": "https://esm.sh/lucide-react@latest" }
   ]
 }
 ```
 
-#### Ahora (v2.x - ESM)
-```json
+#### Ahora (v2.x - Bundling automático)
+```javascript
+// Claude solo envía el código - esbuild detecta todo
 {
-  "dependencies": [
-    {
-      "name": "lucide-react",
-      "esmUrl": "https://esm.sh/lucide-react@latest"
-    }
-  ]
+  "componentCode": "import React from 'react'; import { Phone } from 'lucide-react'; ...",
+  "componentName": "MiComponente"
 }
+// ✅ esbuild detecta automáticamente react y lucide-react
+// ✅ Las bundlea en el HTML (~200KB)
+// ✅ Todo funciona offline
 ```
 
 ---
