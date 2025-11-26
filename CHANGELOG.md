@@ -1,5 +1,44 @@
 # Changelog - Dossin MCP Server
 
+## [1.3.0] - 2024-11-25 - Modularización del Código
+
+### 🎯 Mejoras de Arquitectura
+
+#### Modularización Completa
+- Separación del código en módulos especializados para mejor mantenibilidad
+- Estructura de carpetas `src/` con responsabilidades claras
+- Reducción del archivo principal de ~600 líneas a ~60 líneas
+
+### 📁 Nueva Estructura
+
+```
+index.js (60 líneas) - Punto de entrada
+src/
+  ├── config.js - Configuración y contexto del sistema
+  ├── tools.js - Definición de herramientas MCP
+  ├── handlers.js - Lógica de manejo de requests
+  ├── database.js - Operaciones de base de datos
+  ├── compiler.js - Compilación de componentes React
+  └── fileManager.js - Gestión de archivos
+```
+
+### ✨ Beneficios
+
+- **Mantenibilidad**: Cada módulo tiene una responsabilidad única
+- **Legibilidad**: Archivos más pequeños y enfocados
+- **Testabilidad**: Módulos independientes fáciles de probar
+- **Reutilización**: Funciones importables donde se necesiten
+- **Escalabilidad**: Fácil agregar nuevas funcionalidades
+
+### 🔧 Cambios Técnicos
+
+- Sin cambios en la funcionalidad externa
+- Mismas herramientas MCP disponibles
+- Compatibilidad total con versiones anteriores
+- Sin cambios en dependencias
+
+---
+
 ## [2.0.0] - 2024-11-19 - Sistema de Bundling Completo
 
 ### 🎉 Cambios Mayores
