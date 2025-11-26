@@ -4,7 +4,9 @@
   "description": "MCP Server para acceso a base de datos Dossin via API REST con compilación de componentes React",
   "type": "module",
   "main": "index.js",
-  "bin": "./index.js",
+  "bin": {
+    "dossin-mcp-server": "./index.js"
+  },
   "private": false,
   "scripts": {
     "start": "node index.js",
