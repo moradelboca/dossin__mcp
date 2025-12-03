@@ -1,6 +1,6 @@
 {
   "name": "dossin-mcp-server",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "MCP Server para acceso a base de datos Dossin via API REST con compilación de componentes React",
   "type": "module",
   "main": "index.js",

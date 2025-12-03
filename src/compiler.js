@@ -44,25 +44,58 @@ export { React, createRoot, ${componentName} as default };
       path.join(scriptDir, '..', '..', 'node_modules'),
     ];
     
-    await esbuild.build({
-      entryPoints: [tempInputFile],
-      outfile: tempOutputFile,
-      bundle: true,
-      format: 'iife',
-      globalName: 'DossinApp',
-      platform: 'browser',
-      jsx: 'transform',
-      jsxFactory: 'React.createElement',
-      jsxFragment: 'React.Fragment',
-      target: 'es2020',
-      external: [],
-      nodePaths: possibleNodeModulesPaths,
-      define: {
-        'process.env.NODE_ENV': '"production"'
-      },
-      minify: true,
-      sourcemap: false,
-    });
+    try {
+      await esbuild.build({
+        entryPoints: [tempInputFile],
+        outfile: tempOutputFile,
+        bundle: true,
+        format: 'iife',
+        globalName: 'DossinApp',
+        platform: 'browser',
+        jsx: 'transform',
+        jsxFactory: 'React.createElement',
+        jsxFragment: 'React.Fragment',
+        target: 'es2020',
+        external: [],
+        nodePaths: possibleNodeModulesPaths,
+        define: {
+          'process.env.NODE_ENV': '"production"'
+        },
+        minify: true,
+        sourcemap: false,
+      });
+    } catch (buildError) {
+      // Detectar si es un error de módulo/librería faltante
+      const errorMessage = buildError.message || '';
+      
+      // Patrones comunes de error de módulo no encontrado
+      const moduleNotFoundPatterns = [
+        /Could not resolve "(.+?)"/,
+        /Cannot find module ['"](.+?)['"]/,
+        /Module not found: ['"](.+?)['"]/,
+      ];
+      
+      for (const pattern of moduleNotFoundPatterns) {
+        const match = errorMessage.match(pattern);
+        if (match) {
+          const missingLib = match[1];
+          
+          throw new Error(
+            `❌ Librería '${missingLib}' no está instalada en el MCP.\n\n` +
+            `Para usarla en componentes compilados, primero debe instalarse:\n` +
+            `  1. Navega a la carpeta del MCP\n` +
+            `  2. Ejecuta: npm install ${missingLib}\n` +
+            `  3. Reinicia Claude Desktop\n` +
+            `  4. Vuelve a compilar el componente\n\n` +
+            `Librerías ya disponibles: react, react-dom, lucide-react\n\n` +
+            `Nota: Puedes usar cualquier librería de npm, solo asegúrate de instalarla primero.`
+          );
+        }
+      }
+      
+      // Si no es un error de módulo faltante, re-lanzar el error original
+      throw buildError;
+    }
     
     // Leer código compilado
     let compiledCode = await fs.readFile(tempOutputFile, 'utf-8');
