@@ -70,29 +70,31 @@ params: []`,
   {
     name: "compile_and_save_component",
     description:
-      `Compila un componente React a HTML standalone con bundling completo y lo guarda en ~/Downloads/dossin-components/.
+      `Compila un COMPONENTE DOSSIN a HTML standalone con bundling completo y lo guarda en ~/Downloads/dossin-components/.
 
-⚠️ IMPORTANTE - TRANSFORMACIÓN OBLIGATORIA ANTES DE COMPILAR:
+⚠️ CRÍTICO - DIFERENCIA ENTRE ARTEFACTO Y COMPONENTE DOSSIN:
 
-El componente debe estar en MODO COMPILACIÓN (NO modo preview):
+📱 ARTEFACTO DE CLAUDE (NO compilar):
+   - Componente con datos hardcodeados
+   - Se muestra en el chat de Claude
+   - const turnos = [{id: 1, ...}, {id: 2, ...}]; // Datos fijos
+   - NO tiene fetch(), NO tiene useEffect
+   - ❌ NO usar con compile_and_save_component
 
-❌ NO compilar componentes con datos hardcodeados:
-   const data = [{id: 1, nombre: 'Item'}]; // NO
-   
-✅ SÍ compilar componentes con fetch dinámico:
-   const [data, setData] = useState([]);
-   useEffect(() => {
-     fetch('${BACKEND_URL}/database/query', {...})
-       .then(res => res.json())
-       .then(result => setData(result.data));
-   }, []);
+🔧 COMPONENTE DOSSIN (SÍ compilar):
+   - Componente con fetch dinámico
+   - const [data, setData] = useState([]);
+   - useEffect(() => { fetch('${BACKEND_URL}/database/query', ...) }, []);
+   - Incluye estados: loading, error, data
+   - ✅ USAR con compile_and_save_component
 
-PROCESO DE TRANSFORMACIÓN:
-1. Remover datos hardcodeados
-2. Agregar useState para datos, loading, error
-3. Agregar useEffect con fetch al endpoint correcto
-4. Incluir manejo de estados (loading, error)
-5. LUEGO compilar con esta tool
+TRANSFORMACIÓN REQUERIDA (Artefacto → Componente Dossin):
+1. Remover: const turnos = [datos_hardcodeados];
+2. Agregar: const [turnos, setTurnos] = useState([]);
+3. Agregar: const [loading, setLoading] = useState(true);
+4. Agregar: const [error, setError] = useState(null);
+5. Agregar: useEffect con fetch al endpoint
+6. Agregar: manejo de if(loading) e if(error)
 
 COMPILACIÓN Y BUNDLING:
 - esbuild bundlea automáticamente todas las dependencias
@@ -102,20 +104,19 @@ COMPILACIÓN Y BUNDLING:
 
 RESULTADO:
 - HTML standalone que carga datos en tiempo real
-- Funciona offline (excepto para fetch de datos)
 - Compatible con file://, S3, iframes
 - Tailwind CSS desde CDN
 
-USO:
-- Después de transformar el componente a modo fetch
-- Para archivos listos para producción
+CUÁNDO USAR:
+- Solo después de transformar ARTEFACTO → COMPONENTE DOSSIN
+- Para generar archivos HTML de producción
 - Para servir desde backend o S3`,
     inputSchema: {
       type: "object",
       properties: {
         componentCode: {
           type: "string",
-          description: "El código JSX completo del componente React en MODO COMPILACIÓN (con fetch, no hardcodeado). Debe incluir useState, useEffect, fetch() y manejo de estados.",
+          description: "El código JSX del COMPONENTE DOSSIN (con fetch dinámico, NO el artefacto hardcodeado). Debe incluir useState, useEffect, fetch() y manejo de estados (loading, error).",
         },
         componentName: {
           type: "string",

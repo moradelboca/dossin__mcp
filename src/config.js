@@ -32,23 +32,29 @@ GENERACIÓN DE COMPONENTES REACT - REGLAS OBLIGATORIAS:
    - NO agregar datos extra o sugerencias no pedidas
    - Un propósito único y claro por componente
 
-**2. FLUJO DE DOS MODOS - PREVIEW Y COMPILACIÓN**:
+**2. DOS TIPOS DE COMPONENTES - ARTEFACTO vs COMPONENTE DOSSIN**:
 
-   📊 MODO PREVIEW (Componente Inicial):
-   - Ejecutar execute_query PRIMERO para obtener datos reales
-   - Hardcodear los datos obtenidos directamente en el componente
-   - NO usar fetch(), useEffect, ni estados de loading
-   - El componente muestra datos inmediatamente (preview funcional)
-   - Ejemplo: const data = [{id: 1, nombre: 'Turno 1'}, ...];
+   📱 ARTEFACTO DE CLAUDE (Para mostrar en el chat):
+   - Este es el componente que se muestra como artefacto en la interfaz de Claude
+   - Ejecutar execute_query PRIMERO para obtener datos reales de la BD
+   - Hardcodear los datos obtenidos directamente en el código del componente
+   - NO usar fetch(), NO useEffect, NO estados de loading/error
+   - Los datos están embebidos en el código para visualización inmediata
+   - Ejemplo: const turnos = [{id: 1, hora: '08:00', camion: 'ABC123'}, ...];
    
-   🚀 MODO COMPILACIÓN (compile_and_save_component):
-   - TRANSFORMAR el componente: remover datos hardcodeados
-   - AGREGAR: useState, useEffect, fetch() dinámico
+   🔧 COMPONENTE DOSSIN (Para compile_and_save_component):
+   - Este es el componente que se compila y guarda como HTML standalone
+   - ANTES de llamar compile_and_save_component, TRANSFORMAR el artefacto:
+     1. Remover datos hardcodeados del artefacto
+     2. Agregar: const [data, setData] = useState([]);
+     3. Agregar: const [loading, setLoading] = useState(true);
+     4. Agregar: const [error, setError] = useState(null);
+     5. Agregar useEffect con fetch() dinámico
    - Endpoint: POST ${BACKEND_URL}/database/query
-   - Body: { sql: "query", params: [] }
+   - Body: { sql: "query_original", params: [] }
    - Parsear: result.data contiene los datos
-   - Incluir estados: loading, error, data
-   - El HTML compilado carga datos en tiempo real
+   - Incluir manejo de estados (if loading, if error)
+   - El HTML final carga datos en tiempo real del backend
 
 **3. CÓDIGO COMPLETO Y FUNCIONAL**:
    - Incluir TODOS los imports necesarios
@@ -61,9 +67,10 @@ GENERACIÓN DE COMPONENTES REACT - REGLAS OBLIGATORIAS:
    - esbuild bundlea automáticamente
    - Si falta alguna, el bundling fallará (informar)
 
-**RECORDATORIOS**:
-- Preview: datos hardcodeados (rápido)
-- Compilación: fetch dinámico (tiempo real)
+**RECORDATORIOS CRÍTICOS**:
+- ARTEFACTO: datos hardcodeados (muestra inmediata en Claude)
+- COMPONENTE DOSSIN: fetch dinámico (HTML compilado para producción)
+- Siempre transformar antes de compilar
 - Componentes atómicos y específicos
 - Backend: ${BACKEND_URL}
 `.trim();
