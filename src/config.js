@@ -65,7 +65,9 @@ GENERACIÓN DE COMPONENTES REACT - REGLAS OBLIGATORIAS:
 **4. LIBRERÍAS SIN RESTRICCIONES**:
    - Imports normales: import X from 'libreria'
    - esbuild bundlea automáticamente
-   - Si falta alguna, el bundling fallará (informar)
+   - Si falta alguna, la compilación FALLARÁ con error claro
+   - El error dirá qué librería instalar - DETENER y avisar al usuario
+   - Librerías instaladas: react, react-dom, lucide-react, recharts
 
 **RECORDATORIOS CRÍTICOS**:
 - ARTEFACTO: datos hardcodeados (muestra inmediata en Claude)

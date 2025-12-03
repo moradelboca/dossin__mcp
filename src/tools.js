@@ -100,7 +100,11 @@ COMPILACIÓN Y BUNDLING:
 - esbuild bundlea automáticamente todas las dependencias
 - Detecta imports y los incluye en el HTML (~200KB)
 - Libertad total de librerías (sin restricciones)
-- Si falta una librería, el bundling fallará con error
+- Si falta una librería, la compilación FALLARÁ con error detallado
+- El error indicará qué librería instalar y cómo hacerlo
+- NO continúes si ves error de librería faltante - informa al usuario
+
+Librerías ya instaladas: react, react-dom, lucide-react, recharts
 
 RESULTADO:
 - HTML standalone que carga datos en tiempo real
