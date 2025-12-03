@@ -7,11 +7,17 @@ export const tools = [
     description:
       `${DOSSIN_CONTEXT}
 
-Obtiene el schema completo de la base de datos MySQL de Dossin incluyendo todas las tablas, columnas, tipos de datos, relaciones (foreign keys), índices y metadatos. 
+---
 
-Usa esta herramienta PRIMERO para entender la estructura de la base de datos antes de realizar consultas.
+Obtiene el schema completo de la base de datos MySQL incluyendo tablas, columnas, tipos de datos, relaciones (foreign keys), índices y constraints.
 
-La base de datos contiene información sobre: turnos, camiones, cargas, choferes, clientes, productos agrícolas, destinos, y todas las operaciones del sistema de gestión.`,
+**CUÁNDO USAR**: 
+- Primera interacción con la base de datos
+- Antes de construir consultas complejas
+- Para entender relaciones entre tablas
+- Cuando necesites saber nombres exactos de columnas
+
+**RETORNA**: JSON con estructura completa de la base de datos.`,
     inputSchema: {
       type: "object",
       properties: {},
@@ -21,29 +27,38 @@ La base de datos contiene información sobre: turnos, camiones, cargas, choferes
   {
     name: "execute_query",
     description:
-      `Ejecuta una consulta SQL en la base de datos de Dossin y retorna los resultados. 
+      `Ejecuta consultas SQL SELECT en la base de datos de Dossin.
 
-Usa esta herramienta DESPUÉS de obtener el schema para ejecutar consultas SELECT y obtener datos específicos sobre:
-- Turnos programados (hoy, mañana, por fecha)
-- Camiones registrados (por matrícula, chofer, estado)
-- Cargas activas o históricas
-- Choferes y su información
-- Clientes y productores
-- Productos agrícolas disponibles
-- Destinos de carga/descarga
+**DATOS DISPONIBLES**:
+- Turnos: Programación de carga/descarga
+- Camiones: Vehículos y sus matrículas
+- Cargas: Operaciones activas/históricas
+- Choferes: Conductores registrados
+- Clientes: Empresas y productores
+- Productos: Catálogo agrícola
+- Destinos: Puertos, acopios, plantas
 
-IMPORTANTE: Solo ejecuta consultas SELECT. Usa parámetros (?) para valores dinámicos.`,
+**MEJORES PRÁCTICAS**:
+✅ Usa parámetros (?) para valores dinámicos
+✅ Obtén el schema primero si no conoces la estructura
+✅ Limita resultados con LIMIT cuando sea apropiado
+✅ Usa CURDATE() para fecha actual
+⛔ Solo consultas SELECT permitidas
+
+**EJEMPLO**: 
+query: "SELECT * FROM turnos WHERE fecha >= CURDATE() LIMIT 10"
+params: []`,
     inputSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "La consulta SQL a ejecutar (preferentemente SELECT). Ejemplo: SELECT * FROM turnos WHERE fecha = ? AND estado = 'pendiente'",
+          description: "Consulta SQL SELECT. Usa placeholders (?) para valores dinámicos. Ejemplo: SELECT * FROM turnos WHERE fecha = ? AND estado = ?",
         },
         params: {
           type: "array",
           description:
-            "Parámetros opcionales para la consulta (para usar con placeholders ?). Ejemplo: ['2025-10-22', 'activo']",
+            "Array de parámetros para reemplazar placeholders (?). Ejemplo: ['2025-12-02', 'pendiente']",
           items: {
             type: "string",
           },
@@ -55,51 +70,52 @@ IMPORTANTE: Solo ejecuta consultas SELECT. Usa parámetros (?) para valores din�
   {
     name: "compile_and_save_component",
     description:
-      `Compila un componente React a un archivo HTML standalone con bundling completo y lo guarda en la carpeta Downloads del usuario.
+      `Compila un componente React a HTML standalone con bundling completo y lo guarda en ~/Downloads/dossin-components/.
 
-Esta herramienta toma código JSX de un componente React, lo compila usando esbuild, y genera un archivo HTML completo que incluye:
-- Todas las dependencias bundleadas (React, lucide-react, etc.) - ~200KB minificado
-- El componente compilado y listo para ejecutar
-- Tailwind CSS desde CDN para estilos
-- Renderizado automático del componente
-- Todo en un solo archivo HTML standalone
+⚠️ IMPORTANTE - TRANSFORMACIÓN OBLIGATORIA ANTES DE COMPILAR:
 
-El archivo se guarda en ~/Downloads/dossin-components/ y puede ser:
-- Abierto directamente en el navegador (file://)
-- Subido a S3 y servido desde CloudFront
-- Cargado en un iframe desde cualquier aplicación
-- Usado offline sin conexión a internet
+El componente debe estar en MODO COMPILACIÓN (NO modo preview):
 
-IMPORTANTE - DETECCIÓN AUTOMÁTICA DE DEPENDENCIAS:
-- NO necesitas especificar dependencias manualmente
-- esbuild detecta automáticamente todos los imports del código
-- Las dependencias deben estar instaladas en node_modules del MCP
-- Dependencias incluidas por defecto: react, react-dom, lucide-react
-- Si usas otras librerías (chart.js, axios, etc.), deben estar instaladas en el MCP
+❌ NO compilar componentes con datos hardcodeados:
+   const data = [{id: 1, nombre: 'Item'}]; // NO
+   
+✅ SÍ compilar componentes con fetch dinámico:
+   const [data, setData] = useState([]);
+   useEffect(() => {
+     fetch('${BACKEND_URL}/database/query', {...})
+       .then(res => res.json())
+       .then(result => setData(result.data));
+   }, []);
 
-VENTAJAS DEL BUNDLING:
-- HTML completamente standalone (~200KB)
-- No depende de CDNs externos (excepto Tailwind)
-- Funciona offline
-- Funciona en iframes aislados
-- Perfecto para S3 + CloudFront
-- Se cachea eficientemente
+PROCESO DE TRANSFORMACIÓN:
+1. Remover datos hardcodeados
+2. Agregar useState para datos, loading, error
+3. Agregar useEffect con fetch al endpoint correcto
+4. Incluir manejo de estados (loading, error)
+5. LUEGO compilar con esta tool
 
-COMPATIBILIDAD:
-- Funciona en todos los navegadores modernos
-- Compatible con file://, http://, https://
-- Funciona en iframes con sandbox
+COMPILACIÓN Y BUNDLING:
+- esbuild bundlea automáticamente todas las dependencias
+- Detecta imports y los incluye en el HTML (~200KB)
+- Libertad total de librerías (sin restricciones)
+- Si falta una librería, el bundling fallará con error
 
-CUÁNDO USAR:
-- Después de generar cualquier componente React
-- Para crear archivos listos para producción
-- Para subir a S3 y servir desde tu aplicación`,
+RESULTADO:
+- HTML standalone que carga datos en tiempo real
+- Funciona offline (excepto para fetch de datos)
+- Compatible con file://, S3, iframes
+- Tailwind CSS desde CDN
+
+USO:
+- Después de transformar el componente a modo fetch
+- Para archivos listos para producción
+- Para servir desde backend o S3`,
     inputSchema: {
       type: "object",
       properties: {
         componentCode: {
           type: "string",
-          description: "El código JSX completo del componente React a compilar. Debe incluir imports de React y hooks necesarios.",
+          description: "El código JSX completo del componente React en MODO COMPILACIÓN (con fetch, no hardcodeado). Debe incluir useState, useEffect, fetch() y manejo de estados.",
         },
         componentName: {
           type: "string",

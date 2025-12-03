@@ -15,12 +15,18 @@ export async function compileReactComponent(componentCode, componentName) {
       throw new Error('componentName es requerido para renderizar el componente');
     }
     
-    // Modificar el código para que exporte React, ReactDOM y el componente
+    // Limpiar el código del componente:
+    // Solo remover export default para evitar conflictos
+    let cleanedCode = componentCode
+      .replace(/export\s+default\s+\w+\s*;?\s*/gi, '')
+      .trim();
+    
+    // Agregar solo lo que falta: createRoot y exports
+    // Dejamos que Claude maneje sus propios imports de React
     const codeWithExports = `
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+${cleanedCode}
 
-${componentCode}
+import { createRoot } from 'react-dom/client';
 
 // Exportar todo lo necesario para el código de inicialización
 export { React, createRoot, ${componentName} as default };
