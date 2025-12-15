@@ -72,6 +72,19 @@ params: []`,
     description:
       `Envía un COMPONENTE DOSSIN al backend para compilación remota a HTML standalone.
 
+🔐 AUTENTICACIÓN OBLIGATORIA:
+⚠️ ANTES de llamar a esta tool, DEBES preguntar al usuario por su token de autenticación.
+❗ El token es REQUERIDO para la compilación en el backend.
+
+**FLUJO OBLIGATORIO**:
+1. Pregunta al usuario: "Por favor, proporciona tu token de autenticación"
+2. El usuario puede obtenerlo desde:
+   - DevTools del frontend: document.cookie.split('; ').find(r => r.startsWith('accessToken='))?.split('=')[1]
+   - O copiar directamente desde la aplicación
+3. Una vez obtenido el token, procede con la compilación
+
+---
+
 ⚠️ CRÍTICO - DIFERENCIA ENTRE ARTEFACTO Y COMPONENTE DOSSIN:
 
 📱 ARTEFACTO DE CLAUDE (NO compilar):
@@ -106,6 +119,7 @@ RESULTADO:
 - URL pública del componente compilado
 - HTML standalone con datos en tiempo real
 - Listo para embeber o compartir
+- Registrado con trazabilidad del usuario que lo creó
 
 CUÁNDO USAR:
 - Solo después de transformar ARTEFACTO → COMPONENTE DOSSIN
@@ -124,10 +138,10 @@ CUÁNDO USAR:
         },
         userToken: {
           type: "string",
-          description: "Token JWT del usuario para autenticación. El usuario puede obtenerlo desde el frontend y pegarlo en el chat. Opcional: si no se proporciona, la compilación puede fallar en producción si requiere autenticación.",
+          description: "Token JWT del usuario para autenticación (OBLIGATORIO). Debe ser solicitado al usuario ANTES de llamar a esta función. El token se envía como Authorization Bearer al backend y permite trazabilidad de quién creó el componente.",
         },
       },
-      required: ["reactCode", "componentName"],
+      required: ["reactCode", "componentName", "userToken"],
     },
   },
 ];
