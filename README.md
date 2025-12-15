@@ -34,19 +34,16 @@ Para usar este servidor MCP en Claude Desktop, configura el archivo `claude_desk
 
 ## Descripción
 
-Este servidor MCP se descarga directamente desde GitHub usando `npx`. Actúa como puente entre Claude y el backend de Dossin, exponiendo dos herramientas principales:
+Este servidor MCP se descarga directamente desde GitHub usando `npx`. Actúa como puente entre Claude y el backend de Dossin, exponiendo tres herramientas principales:
 
 1. **get_database_schema**: Obtiene el schema completo de la base de datos con metadatos (vía GET /api/database/schema)
 2. **execute_query**: Ejecuta consultas SQL y retorna resultados (vía POST /api/database/query)
-
-## Instalación
-
-Este servidor MCP se descarga directamente desde GitHub, no requiere instalación previa ni configuración de tokens.
+3. **compile_and_save_component**: Envía componentes React al backend para compilación remota (vía POST /api/archivos/compilar)
 
 ### Prerequisitos
 
 1. El backend de Dossin debe estar corriendo en `http://localhost:3000` (o la URL que configures en Claude Desktop)
-2. Los endpoints `/api/database/schema` y `/api/database/query` deben estar disponibles
+2. Los endpoints `/api/database/schema`, `/api/database/query` y `/api/archivos/compilar` deben estar disponibles
 3. Node.js instalado (v18 o superior recomendado)
 
 ## Herramientas disponibles
@@ -73,58 +70,64 @@ Ejecuta la siguiente query: SELECT * FROM camiones LIMIT 10
 
 **Respuesta**: JSON con columnas, filas y conteo.
 
-### 3. compile_and_save_component ⭐ NUEVO (Bundling Completo)
+### 3. compile_and_save_component ⭐ Compilación Remota
 
-Compila componentes React a archivos HTML standalone con **bundling completo** y los guarda en `~/Downloads/dossin-components/`.
+Envía componentes React al backend para compilación remota y obtiene una URL pública del componente compilado.
 
 **Uso en Claude**:
 ```
-Usuario: "Compila este componente React y guárdalo"
-Usuario: "Guarda el componente VolumenCargaProvincias"
+Usuario: "Compila este componente React"
+Usuario: "Sube el componente VolumenCargaProvincias al backend"
 Usuario: "Exporta este componente a HTML"
 ```
 
-**Funcionalidad**:
-- Compila JSX a JavaScript usando esbuild
-- Bundlea TODAS las dependencias (React, lucide-react, etc.) en el HTML
-- Genera archivo HTML standalone de ~200KB
-- Detección automática de dependencias (no necesitas especificarlas)
-- Guarda en `~/Downloads/dossin-components/`
-- Retorna: ruta del archivo, tamaño, hash MD5
-- Listo para servir directamente desde el backend
+**Autenticación (Producción)**:
 
-**Ventajas del bundling completo**:
-- ✅ HTML completamente standalone (~200KB)
-- ✅ No depende de CDNs externos (excepto Tailwind)
-- ✅ Funciona offline
-- ✅ Funciona en iframes aislados
-- ✅ Perfecto para S3 + CloudFront
-- ✅ Se cachea eficientemente
+En producción, este endpoint requiere autenticación. Puedes proporcionar tu token de dos formas:
+
+**Opción 1 - Pasar el token en el chat**:
+```
+Usuario: "Compila este componente. Mi token es: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+Claude automáticamente extraerá y usará el token para autenticarse con el backend.
+
+**Opción 2 - Obtener tu token**:
+
+Desde la consola del navegador en el frontend de Dossin:
+```javascript
+// Copia este resultado y pégalo en Claude
+document.cookie
+  .split('; ')
+  .find(row => row.startsWith('accessToken='))
+  ?.split('=')[1]
+```
+
+**Funcionalidad**:
+- Envía el código JSX al backend vía POST /api/archivos/compilar
+- Autenticación automática con el token del usuario
+- El backend compila y bundlea el componente
+- Retorna URL pública del componente compilado
+- El componente queda registrado con el email del usuario que lo creó
+- Disponible para usar en iframes, compartir, etc.
+
+**Ventajas**:
+- ✅ Compilación centralizada en el backend
+- ✅ URL pública inmediata
+- ✅ Trazabilidad completa (quién creó qué)
+- ✅ Sin dependencias pesadas en el MCP
+- ✅ Archivos listos para producción
+- ✅ Fácil de embeber y compartir
 
 **Ejemplo de respuesta**:
 ```json
 {
   "success": true,
-  "localPath": "/Users/usuario/Downloads/dossin-components/VolumenCargaProvincias-2025-11-07-143022.html",
-  "fileName": "VolumenCargaProvincias-2025-11-07-143022.html",
-  "fileSize": 12456,
-  "hash": "a1b2c3d4e5f6...",
-  "timestamp": "2025-11-07T14:30:22.123Z",
-  "message": "Componente compilado y guardado exitosamente..."
+  "url": "https://dev.dossin.com.ar/components/VolumenCargaProvincias-2025-12-10.html",
+  "htmlPath": "/components/VolumenCargaProvincias-2025-12-10.html",
+  "message": "Componente compilado exitosamente en el backend. URL: https://..."
 }
 ```
-
-**Ventajas**:
-- ✅ Archivos listos para producción
-- ✅ No requiere compilación en el backend (optimiza recursos)
-- ✅ HTML standalone: funciona en cualquier servidor
-- ✅ React desde CDN: mejor performance y caché
-- ✅ Fácil de compartir y deployar
-
-**Fase 2 (Próximamente)**:
-- Parámetro `uploadToBackend: true` para subir automáticamente al backend
-- Endpoint: `POST /api/components/upload`
-- Retorna URL pública del componente
 
 ## Ejemplo de flujo de trabajo con Claude
 
@@ -184,14 +187,14 @@ Usuario: ¿Qué chofer maneja el camión ABC123?
 
 ## Generación y Compilación de Componentes React
 
-El servidor MCP de Dossin permite un flujo completo desde la generación hasta la compilación de componentes React:
+El servidor MCP de Dossin permite un flujo completo desde la generación hasta la compilación remota de componentes React:
 
 ### Flujo Completo:
 
 1. **Generación**: Claude genera el componente React basado en tu solicitud
-2. **Compilación**: Claude compila automáticamente el componente a HTML
-3. **Guardado**: El archivo se guarda en `~/Downloads/dossin-components/`
-4. **Deployment**: Puedes servir el archivo directamente desde tu backend
+2. **Envío al Backend**: Claude envía el código al backend para compilación
+3. **Compilación Remota**: El backend compila y bundlea el componente
+4. **URL Pública**: Recibes una URL pública del componente compilado
 
 ### Ejemplo de Uso Completo:
 
@@ -201,19 +204,19 @@ Usuario: "Crea un componente con el volumen de carga por provincia de los últim
 Claude: 
 1. [Genera componente React completo]
 2. [Muestra el código al usuario]
-3. "¿Quieres que compile y guarde este componente?"
+3. "¿Quieres que lo compile en el backend?"
 
 Usuario: "Sí, compílalo"
 
 Claude:
 [Usa compile_and_save_component]
-"✅ Componente compilado y guardado en:
-/Users/usuario/Downloads/dossin-components/VolumenCargaProvincias-2025-11-07-143022.html
+"✅ Componente compilado en el backend.
+URL: https://dev.dossin.com.ar/components/VolumenCargaProvincias-2025-12-10.html
 
 Puedes:
 - Abrirlo directamente en el navegador
-- Servirlo desde tu backend en /public/components/
-- Compartirlo como archivo standalone"
+- Embederlo en un iframe
+- Compartir la URL"
 ```
 
 ## Generación de Componentes React Interactivos
@@ -396,7 +399,12 @@ El servidor se comunicará a través de stdio (stdin/stdout) usando el protocolo
 ```
 mcp/
 ├── index.js           # Servidor MCP principal
-├── package.json       # Dependencias y scripts
+├── package.json       # Dependencias (solo MCP SDK y dotenv)
+├── src/
+│   ├── config.js      # Configuración del servidor
+│   ├── database.js    # Funciones para interactuar con la BD
+│   ├── handlers.js    # Handlers de las herramientas MCP
+│   └── tools.js       # Definición de herramientas MCP
 ├── .env              # Variables de entorno (no incluido en git)
 ├── .env.example      # Ejemplo de variables de entorno
 ├── .gitignore        # Archivos a ignorar
@@ -408,6 +416,8 @@ mcp/
 - El servidor se comunica con el backend vía HTTP, no se conecta directamente a la base de datos
 - El servidor NO tiene autenticación. La autenticación (si la hay) la maneja el backend
 - Las consultas SQL no están restringidas por ahora (depende de la lógica del backend)
+- La compilación de componentes React se realiza en el backend, no localmente
+- El MCP solo envía el código JSX al backend y recibe la URL del componente compilado
 - Asegúrate de que el backend esté corriendo antes de usar este MCP server
 
 ## Solución de problemas
@@ -530,69 +540,41 @@ Los componentes generados son puntos de partida. Puedes extenderlos:
 4. **Usa HTTPS** en producción
 5. **Configura CORS** apropiadamente (no usar wildcard `*` en producción)
 
-## Sistema de Bundling Completo
+## Compilación Remota de Componentes
 
 ### ¿Cómo funciona?
 
-El servidor MCP usa **esbuild** para bundlear todas las dependencias en un solo archivo HTML standalone:
+El servidor MCP envía el código del componente al backend de Dossin, que se encarga de:
 
-- **Bundling automático**: esbuild detecta automáticamente todos los imports
-- **Formato IIFE**: Compatible con file://, S3, iframes
-- **Minificación**: Código optimizado y comprimido
-- **Standalone**: No depende de CDNs externos (excepto Tailwind)
-- **Offline**: Funciona sin conexión a internet
+- **Compilación**: El backend usa esbuild para compilar JSX a JavaScript
+- **Bundling**: Incluye todas las dependencias necesarias (React, librerías, etc.)
+- **Optimización**: Minifica y optimiza el código
+- **Hosting**: Sirve el HTML compilado desde una URL pública
 
-### Compatibilidad
+### Ventajas de la Compilación Remota
 
-| Navegador | Versión Mínima |
-|-----------|----------------|
-| Chrome    | 89+ (2021)     |
-| Edge      | 89+ (2021)     |
-| Safari    | 14+ (2020)     |
-| Firefox   | 78+ (2020)     |
+- ✅ **MCP ligero**: Sin dependencias pesadas (esbuild, babel, react)
+- ✅ **Centralizado**: Todas las compilaciones en un solo lugar
+- ✅ **URL pública**: Acceso inmediato desde cualquier lugar
+- ✅ **Gestión**: El backend puede versionar y administrar los componentes
+- ✅ **Escalable**: Fácil agregar caché, CDN, etc.
 
-### Ejemplo de HTML Generado
+### Flujo de Compilación
 
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>MiComponente - Dossin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  <div id="root"></div>
-  
-  <!-- Componente bundleado (~200KB) -->
-  <script type="module">
-    // Todo el código de React, lucide-react, y tu componente
-    // está bundleado aquí en formato IIFE
-    var DossinApp = (function() {
-      // ... código minificado de React
-      // ... código minificado de lucide-react
-      // ... tu componente
-      // ... código de renderizado
-    })();
-  </script>
-</body>
-</html>
 ```
-
-### Dependencias Incluidas
-
-Por defecto, el MCP tiene instaladas:
-- **react** (v18)
-- **react-dom** (v18)
-- **lucide-react** (latest)
-
-Para usar otras librerías, deben estar instaladas en `node_modules` del MCP.
-
-### Migración desde versiones anteriores
-
-Si tienes componentes compilados con el sistema anterior, simplemente recompílalos. El nuevo sistema:
-- NO requiere especificar dependencias manualmente
-- Detecta automáticamente todos los imports
-- Genera archivos más grandes (~200KB) pero completamente standalone
+┌─────────┐                 ┌──────────┐                 ┌─────────┐
+│  Claude │ ─── código ───▶ │   MCP    │ ── POST req ──▶ │ Backend │
+└─────────┘                 └──────────┘                 └─────────┘
+                                  │                            │
+                                  │        ┌───────────────────┘
+                                  │        │ Compila con esbuild
+                                  │        │ Bundlea dependencias
+                                  │        │ Guarda HTML
+                                  │        ▼
+                                  │   ┌─────────┐
+                                  └───│   URL   │
+                                      └─────────┘
+```
 
 ## Documentación Adicional
 

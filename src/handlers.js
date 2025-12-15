@@ -1,7 +1,6 @@
 import { getDatabaseSchema, executeQuery } from './database.js';
-import { compileReactComponent, createStandaloneHTML } from './compiler.js';
-import { saveToDownloads } from './fileManager.js';
 import { tools } from './tools.js';
+import { BACKEND_URL } from './config.js';
 
 // Handler para listar herramientas
 export function handleListTools() {
@@ -78,38 +77,59 @@ async function handleExecuteQuery(args) {
 // Handler específico para compile_and_save_component
 async function handleCompileAndSaveComponent(args) {
   const { 
-    componentCode, 
-    componentName, 
-    fileName = null
+    reactCode, 
+    componentName,
+    userToken
   } = args;
   
-  if (!componentCode || typeof componentCode !== "string") {
-    throw new Error("componentCode is required and must be a string");
+  if (!reactCode || typeof reactCode !== "string") {
+    throw new Error("reactCode is required and must be a string");
   }
   
   if (!componentName || typeof componentName !== "string") {
     throw new Error("componentName is required and must be a string");
   }
 
-  // Compilar el componente React
-  const compiledCode = await compileReactComponent(componentCode, componentName);
+  // Enviar al backend para compilación remota
+  const endpoint = `${BACKEND_URL}/archivos/compilar`;
   
-  // Crear HTML standalone
-  const htmlContent = createStandaloneHTML(compiledCode, componentName);
+  const formData = new FormData();
+  formData.append('reactCode', reactCode);
+  formData.append('componentName', componentName);
   
-  // Guardar en Downloads
-  const saveResult = await saveToDownloads(htmlContent, fileName, componentName);
+  // Preparar headers
+  const headers = {};
   
-  const response = {
-    ...saveResult,
-    message: `Componente compilado y guardado exitosamente en ${saveResult.localPath}`
+  // Si se proporciona token de usuario, agregarlo como Bearer token
+  if (userToken && typeof userToken === "string") {
+    headers['Authorization'] = `Bearer ${userToken}`;
+  }
+  
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Error al compilar en el backend: ${response.status} - ${errorData}`);
+  }
+
+  const result = await response.json();
+  
+  const responseMessage = {
+    success: result.success,
+    url: result.url,
+    htmlPath: result.htmlPath,
+    message: `Componente compilado exitosamente en el backend. URL: ${result.url}`
   };
   
   return {
     content: [
       {
         type: "text",
-        text: JSON.stringify(response, null, 2),
+        text: JSON.stringify(responseMessage, null, 2),
       },
     ],
   };

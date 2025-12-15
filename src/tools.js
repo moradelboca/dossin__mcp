@@ -70,7 +70,7 @@ params: []`,
   {
     name: "compile_and_save_component",
     description:
-      `Compila un COMPONENTE DOSSIN a HTML standalone con bundling completo y lo guarda en ~/Downloads/dossin-components/.
+      `Envía un COMPONENTE DOSSIN al backend para compilación remota a HTML standalone.
 
 ⚠️ CRÍTICO - DIFERENCIA ENTRE ARTEFACTO Y COMPONENTE DOSSIN:
 
@@ -96,42 +96,38 @@ TRANSFORMACIÓN REQUERIDA (Artefacto → Componente Dossin):
 5. Agregar: useEffect con fetch al endpoint
 6. Agregar: manejo de if(loading) e if(error)
 
-COMPILACIÓN Y BUNDLING:
-- esbuild bundlea automáticamente todas las dependencias
-- Detecta imports y los incluye en el HTML (~200KB)
-- Libertad total de librerías (sin restricciones)
-- Si falta una librería, la compilación FALLARÁ con error detallado
-- El error indicará qué librería instalar y cómo hacerlo
-- NO continúes si ves error de librería faltante - informa al usuario
-
-Librerías ya instaladas: react, react-dom, lucide-react, recharts
+COMPILACIÓN EN BACKEND:
+- El backend compila el componente con todas las dependencias
+- Genera HTML standalone listo para producción
+- Retorna URL pública del componente compilado
+- Compatible con iframes, S3, CDN
 
 RESULTADO:
-- HTML standalone que carga datos en tiempo real
-- Compatible con file://, S3, iframes
-- Tailwind CSS desde CDN
+- URL pública del componente compilado
+- HTML standalone con datos en tiempo real
+- Listo para embeber o compartir
 
 CUÁNDO USAR:
 - Solo después de transformar ARTEFACTO → COMPONENTE DOSSIN
 - Para generar archivos HTML de producción
-- Para servir desde backend o S3`,
+- Para obtener URL pública del componente`,
     inputSchema: {
       type: "object",
       properties: {
-        componentCode: {
+        reactCode: {
           type: "string",
-          description: "El código JSX del COMPONENTE DOSSIN (con fetch dinámico, NO el artefacto hardcodeado). Debe incluir useState, useEffect, fetch() y manejo de estados (loading, error).",
+          description: "El código JSX completo del COMPONENTE DOSSIN. DEBE incluir: imports (React, useState, useEffect), fetch dinámico a la API, estados (loading, error, data), y manejo de errores. NO enviar artefactos con datos hardcodeados.",
         },
         componentName: {
           type: "string",
-          description: "Nombre descriptivo del componente (ej: 'VolumenCargaProvincias', 'TurnosDelDia'). Se usa para el título y nombre del archivo.",
+          description: "Nombre descriptivo del componente (ej: 'VolumenCargaProvincias', 'TurnosDelDia'). Se usa para el título del HTML y nombre del archivo.",
         },
-        fileName: {
+        userToken: {
           type: "string",
-          description: "Nombre personalizado para el archivo HTML (opcional). Si no se proporciona, se genera automáticamente con timestamp.",
+          description: "Token JWT del usuario para autenticación. El usuario puede obtenerlo desde el frontend y pegarlo en el chat. Opcional: si no se proporciona, la compilación puede fallar en producción si requiere autenticación.",
         },
       },
-      required: ["componentCode", "componentName"],
+      required: ["reactCode", "componentName"],
     },
   },
 ];

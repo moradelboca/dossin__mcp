@@ -1,5 +1,72 @@
 # Changelog - Dossin MCP Server
 
+## [2.0.0] - 2025-12-10 - Migración a Compilación Remota
+
+### 🎯 BREAKING CHANGES
+
+#### Compilación Remota en Backend
+- **BREAKING CHANGE**: La compilación de componentes ahora se realiza en el backend
+- Eliminado el sistema de compilación local con esbuild
+- El MCP envía el código JSX al endpoint `/api/archivos/compilar` del backend
+- El backend retorna una URL pública del componente compilado
+
+### 🗑️ Archivos Eliminados
+
+- `src/compiler.js` - Compilación local con esbuild
+- `src/fileManager.js` - Guardado en ~/Downloads
+- `scripts/bundle-libraries.js`
+- `scripts/react-dom-wrapper.js`
+- Carpeta `dossin-components/`
+
+### 📦 Dependencias Removidas
+
+Eliminadas las siguientes dependencias (ya no se compila localmente):
+- `esbuild`
+- `@babel/standalone`
+- `react`
+- `react-dom`
+- `lucide-react`
+- `recharts`
+
+### ✨ Nuevas Características
+
+- **MCP más ligero**: Solo depende de `@modelcontextprotocol/sdk` y `dotenv`
+- **Compilación centralizada**: Todas las compilaciones se realizan en el backend
+- **URL pública**: Los componentes compilados tienen URL pública inmediata
+- **Gestión centralizada**: El backend puede versionar y administrar componentes
+
+### 🔧 Cambios en la Tool `compile_and_save_component`
+
+**Antes:**
+```json
+{
+  "success": true,
+  "localPath": "/Users/.../Downloads/dossin-components/Component.html",
+  "fileName": "Component.html",
+  "fileSize": 12456,
+  "hash": "abc123..."
+}
+```
+
+**Ahora:**
+```json
+{
+  "success": true,
+  "url": "https://dev.dossin.com.ar/components/Component.html",
+  "htmlPath": "/components/Component.html",
+  "message": "Componente compilado exitosamente..."
+}
+```
+
+### 📝 Migración
+
+Si usabas la versión anterior:
+1. Asegúrate de que el endpoint `/api/archivos/compilar` esté disponible en tu backend
+2. Los componentes ya no se guardan localmente, sino que se obtiene una URL pública
+3. Actualiza tus scripts/flujos de trabajo para usar las URLs en lugar de archivos locales
+
+---
+
 ## [1.3.0] - 2024-11-25 - Modularización del Código
 
 ### 🎯 Mejoras de Arquitectura
@@ -39,12 +106,13 @@ src/
 
 ---
 
-## [2.0.0] - 2024-11-19 - Sistema de Bundling Completo
+## [1.6.2] - 2024-11-19 - Sistema de Bundling Completo (DEPRECADO)
 
 ### 🎉 Cambios Mayores
 
 #### Sistema de Bundling Completo
-- **BREAKING CHANGE**: El sistema ahora bundlea todas las dependencias (React, lucide-react, etc.)
+- **DEPRECADO**: Este sistema ha sido reemplazado por compilación remota en v2.0.0
+- Bundleaba todas las dependencias (React, lucide-react, etc.)
 - Cambio de CDN externo a bundling local con esbuild
 - Formato IIFE para compatibilidad con file:// y iframes
 - Código de renderizado incluido en la compilación
